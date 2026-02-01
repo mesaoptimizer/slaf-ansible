@@ -2,6 +2,10 @@
 - name: Deploy Loki to lxc-loki
   hosts: lxc-loki
   become: true
+  vars_prompt:
+    - name: vault_token
+      prompt: "Vault admin token (for retrieving AppRole credentials)"
+      private: true
   vars:
     # Override defaults from group_vars/monitoring.yml if needed
     # s3_endpoint: "https://garage.example.com:3900"

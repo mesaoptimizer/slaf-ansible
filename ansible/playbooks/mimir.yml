@@ -2,6 +2,10 @@
 - name: Deploy Mimir to lxc-mimir
   hosts: lxc-mimir
   become: true
+  vars_prompt:
+    - name: vault_token
+      prompt: "Vault admin token (for retrieving AppRole credentials)"
+      private: true
   vars:
     # Override defaults from group_vars/monitoring.yml if needed
     # s3_endpoint: "https://garage.example.com:3900"

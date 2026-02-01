@@ -63,46 +63,25 @@
         group: root
       register: mimir_binary_download
 
-- name: Read AppRole credentials from local files (Semaphore host)
+- name: Retrieve AppRole credentials from Vault
   block:
-    - name: Check if Role ID file exists on localhost
-      stat:
-        path: /tmp/mimir-role-id.txt
-      register: role_id_stat
-      delegate_to: localhost
-      become: false
+    - name: Get AppRole credentials from Vault for mimir
+      uri:
+        url: "{{ vault_addr }}/v1/secret/data/approle/mimir"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        status_code: 200
+        validate_certs: false
+      register: approle_credentials_result
+      check_mode: false
 
-    - name: Check if Secret ID file exists on localhost
-      stat:
-        path: /tmp/mimir-secret-id.txt
-      register: secret_id_stat
-      delegate_to: localhost
-      become: false
-
-    - name: Fail if credentials not found
-      fail:
-        msg: "AppRole credentials not found on Semaphore host. Run configure-vault.yml playbook first."
-      when: not role_id_stat.stat.exists or not secret_id_stat.stat.exists
-
-    - name: Read Role ID from localhost
-      slurp:
-        src: /tmp/mimir-role-id.txt
-      register: role_id_file
-      delegate_to: localhost
-      become: false
-
-    - name: Read Secret ID from localhost
-      slurp:
-        src: /tmp/mimir-secret-id.txt
-      register: secret_id_file
-      delegate_to: localhost
-      become: false
-
-    - name: Set AppRole credentials
+    - name: Set AppRole credentials from Vault
       set_fact:
-        mimir_vault_role_id: "{{ role_id_file.content | b64decode | trim }}"
-        mimir_vault_secret_id: "{{ secret_id_file.content | b64decode | trim }}"
+        mimir_vault_role_id: "{{ approle_credentials_result.json.data.data.role_id }}"
+        mimir_vault_secret_id: "{{ approle_credentials_result.json.data.data.secret_id }}"
         cacheable: true
+      when: approle_credentials_result.json.data.data.role_id is defined
 
 - name: Retrieve S3 credentials from Vault using AppRole
   block:
