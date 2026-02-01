@@ -17,6 +17,7 @@
 
     vault_addr: "https://vault.lan.schlaefli.dev"
     vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    vault_skip_verify: false
     vault_s3_secret_path: "secret/data/garage/{{ app_name }}/credentials"
 
   tasks:
@@ -109,18 +110,20 @@
 
     - name: Store Garage credentials in Vault
       delegate_to: localhost
-      community.general.hashi_vault:
-        auth_method: token
-        url: "{{ vault_addr }}"
-        token: "{{ vault_token }}"
-        path: "{{ vault_s3_secret_path }}"
+      uri:
+        url: "{{ vault_addr }}/v1/{{ vault_s3_secret_path }}"
         method: POST
-        data:
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        body_format: json
+        body:
           data:
             access_key_id: "{{ garage_key_id }}"
             secret_access_key: "{{ garage_secret_key }}"
             bucket_name: "{{ garage_bucket_name }}"
             key_name: "{{ garage_key_effective_name }}"
+        status_code: 200
+        validate_certs: "{{ not vault_skip_verify }}"
       when:
         - garage_key_id is defined
         - garage_secret_key is defined
