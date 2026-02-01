@@ -3,18 +3,41 @@
   hosts: homelab
   gather_facts: false
   tasks:
-    - name: Install Python and essentials on Alpine
-      ansible.builtin.raw: apk add --no-cache --no-progress python3 py3-pip curl wget
+    - name: Try to gather facts (may fail on fresh hosts)
+      ansible.builtin.setup:
+      ignore_errors: true
+      register: facts_result
+
+    - name: Install Python on Alpine (if facts failed or Alpine detected)
+      ansible.builtin.raw: apk add --no-cache --no-progress python3 py3-pip
       register: apk_install
       changed_when: "'Installing' in apk_install.stdout or 'Upgrading' in apk_install.stdout"
+      when: facts_result.failed or ansible_os_family == "Alpine"
 
-    - name: Gather facts
+    - name: Install Python on Debian/Ubuntu (if facts failed or Debian detected)
+      ansible.builtin.raw: apt-get update && apt-get install -y python3 python3-pip
+      register: apt_install
+      changed_when: "'Unpacking' in apt_install.stdout"
+      when: facts_result.failed or ansible_os_family == "Debian"
+
+    - name: Gather facts (now that Python is installed)
       ansible.builtin.setup:
 
     - name: Ping hosts
       ansible.builtin.ping:
 
-    - name: Update system packages
+    - name: Install essentials on Alpine
       community.general.apk:
+        name:
+          - curl
+          - wget
+        state: present
+      when: ansible_os_family == "Alpine"
+
+    - name: Install essentials on Debian/Ubuntu
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+        state: present
         update_cache: true
-        upgrade: true
