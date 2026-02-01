@@ -8,9 +8,16 @@
     state: present
     update_cache: true
 
+- name: Create mimir system group
+  group:
+    name: mimir
+    system: true
+    state: present
+
 - name: Create mimir system user
   user:
     name: mimir
+    group: mimir
     shell: /sbin/nologin
     home: /var/lib/mimir
     createhome: true
