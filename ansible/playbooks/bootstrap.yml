@@ -3,5 +3,18 @@
   hosts: homelab
   gather_facts: false
   tasks:
+    - name: Install Python and essentials on Alpine
+      ansible.builtin.raw: apk add --no-cache python3 py3-pip curl wget 2>/dev/null || true
+      register: apk_install
+      changed_when: "'Installing' in apk_install.stdout or 'Upgrading' in apk_install.stdout"
+
+    - name: Gather facts
+      ansible.builtin.setup:
+
     - name: Ping hosts
       ansible.builtin.ping:
+
+    - name: Update system packages
+      community.general.apk:
+        update_cache: true
+        upgrade: true
