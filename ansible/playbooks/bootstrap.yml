@@ -8,17 +8,35 @@
       ignore_errors: true
       register: facts_result
 
-    - name: Install Python on Alpine (if facts failed or Alpine detected)
+    - name: Detect OS when facts failed (Alpine)
+      ansible.builtin.raw: command -v apk
+      register: apk_check
+      failed_when: false
+      changed_when: false
+      when: facts_result.failed
+
+    - name: Detect OS when facts failed (Debian)
+      ansible.builtin.raw: command -v apt-get
+      register: apt_check
+      failed_when: false
+      changed_when: false
+      when: facts_result.failed
+
+    - name: Install Python on Alpine
       ansible.builtin.raw: apk add --no-cache --no-progress python3 py3-pip
       register: apk_install
       changed_when: "'Installing' in apk_install.stdout or 'Upgrading' in apk_install.stdout"
-      when: facts_result.failed or (ansible_os_family is defined and ansible_os_family == "Alpine")
+      when: >
+        (facts_result.failed and apk_check.rc == 0) or
+        (not facts_result.failed and ansible_os_family == "Alpine")
 
-    - name: Install Python on Debian/Ubuntu (if facts failed or Debian detected)
+    - name: Install Python on Debian/Ubuntu
       ansible.builtin.raw: apt-get update && apt-get install -y python3 python3-pip
       register: apt_install
       changed_when: "'Unpacking' in apt_install.stdout"
-      when: facts_result.failed or (ansible_os_family is defined and ansible_os_family == "Debian")
+      when: >
+        (facts_result.failed and apt_check.rc == 0) or
+        (not facts_result.failed and ansible_os_family == "Debian")
 
     - name: Gather facts (now that Python is installed)
       ansible.builtin.setup:
