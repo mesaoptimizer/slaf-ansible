@@ -4,7 +4,7 @@
   gather_facts: false
   tasks:
     - name: Install Python and essentials on Alpine
-      ansible.builtin.raw: apk add --no-cache --no-progress -q python3 py3-pip curl wget
+      ansible.builtin.raw: apk add --no-cache --no-progress python3 py3-pip curl wget
       register: apk_install
       changed_when: "'Installing' in apk_install.stdout or 'Upgrading' in apk_install.stdout"
 
