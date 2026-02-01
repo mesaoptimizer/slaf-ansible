@@ -9,7 +9,7 @@ server:
   log_format: json
 
 common:
-  path_prefix: {{ loki_data_dir }}
+  path_prefix: "{{ loki_data_dir }}"
   replication_factor: 1
   ring:
     kvstore:
@@ -39,8 +39,8 @@ schema_config:
 
 storage_config:
   tsdb_shipper:
-    active_index_directory: {{ loki_index_dir }}
-    cache_location: {{ loki_cache_dir }}
+    active_index_directory: "{{ loki_index_dir }}"
+    cache_location: "{{ loki_cache_dir }}"
   aws:
     bucketnames: "{{ loki_s3_bucket }}"
     endpoint: "{{ s3_endpoint }}"
@@ -56,12 +56,12 @@ storage_config:
 ingester:
   wal:
     enabled: true
-    dir: {{ loki_wal_dir }}
+    dir: "{{ loki_wal_dir }}"
 
 compactor:
-  working_directory: {{ loki_compactor_dir }}
+  working_directory: "{{ loki_compactor_dir }}"
   shared_store: s3
   retention_enabled: true
 
 limits_config:
-  retention_period: {{ loki_retention_hours }}h
+  retention_period: "{{ loki_retention_hours }}h"
