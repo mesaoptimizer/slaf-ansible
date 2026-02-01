@@ -1,0 +1,7 @@
+---
+- name: Bootstrap hosts
+  hosts: homelab
+  gather_facts: true
+  tasks:
+    - name: Ping hosts
+      ansible.builtin.ping:

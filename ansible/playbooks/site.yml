@@ -1,0 +1,5 @@
+---
+- name: Homelab site
+  hosts: homelab
+  roles:
+    - common
