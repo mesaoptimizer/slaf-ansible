@@ -49,10 +49,13 @@
       register: loki_release
       check_mode: false
 
+    - name: Select Loki asset name for Linux amd64
+      set_fact:
+        loki_asset_name: "{{ loki_release.json.assets | map(attribute='name') | select('match', '^loki-linux-amd64(\\.zip)?$') | list | first | default('') }}"
+
     - name: Extract download URL for Linux amd64
       set_fact:
-        loki_asset_name: "{{ loki_release.json.assets | map(attribute='name') | select('match', '^loki-linux-amd64(\\.zip)?$') | list | first }}"
-        loki_download_url: "{{ loki_release.json.assets | selectattr('name', 'equalto', loki_asset_name) | map(attribute='browser_download_url') | first }}"
+        loki_download_url: "{{ loki_release.json.assets | selectattr('name', 'equalto', loki_asset_name) | map(attribute='browser_download_url') | first | default('') }}"
         loki_download_is_zip: "{{ loki_asset_name is search('\\.zip$') }}"
 
     - name: Fail if Loki download URL is missing
