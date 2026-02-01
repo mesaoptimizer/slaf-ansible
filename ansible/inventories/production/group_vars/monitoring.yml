@@ -14,5 +14,5 @@ s3_skip_verify: true  # For self-signed certs from Garage
 # Mimir configuration
 mimir_s3_bucket: "mimir"
 
-# Loki configuration (if using)
-# loki_s3_bucket: "loki"
+# Loki configuration
+loki_s3_bucket: "loki"

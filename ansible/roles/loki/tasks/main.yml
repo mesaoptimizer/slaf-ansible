@@ -1,0 +1,227 @@
+---
+- name: Install Loki dependencies
+  apk:
+    name:
+      - curl
+      - ca-certificates
+      - libcap
+      - unzip
+    state: present
+    update_cache: true
+
+- name: Create loki system group
+  group:
+    name: loki
+    system: true
+    state: present
+
+- name: Create loki system user
+  user:
+    name: loki
+    group: loki
+    shell: /sbin/nologin
+    home: /var/lib/loki
+    createhome: true
+    system: true
+    state: present
+
+- name: Create loki directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: loki
+    group: loki
+    mode: "0750"
+  loop:
+    - /var/lib/loki
+    - /var/lib/loki/wal
+    - /var/lib/loki/tsdb-index
+    - /var/lib/loki/tsdb-cache
+    - /var/lib/loki/compactor
+    - /etc/loki
+
+- name: Download Loki binary
+  block:
+    - name: Get latest Loki release
+      uri:
+        url: https://api.github.com/repos/grafana/loki/releases/latest
+        return_content: true
+      register: loki_release
+      check_mode: false
+
+    - name: Extract download URL for Linux amd64
+      set_fact:
+        loki_asset_name: "{{ loki_release.json.assets | map(attribute='name') | select('match', '^loki-linux-amd64(\\.zip)?$') | list | first }}"
+        loki_download_url: "{{ loki_release.json.assets | selectattr('name', 'equalto', loki_asset_name) | map(attribute='browser_download_url') | first }}"
+        loki_download_is_zip: "{{ loki_asset_name is search('\\.zip$') }}"
+
+    - name: Fail if Loki download URL is missing
+      fail:
+        msg: "Unable to determine Loki download URL for linux-amd64."
+      when: loki_download_url is not defined or loki_download_url == ""
+
+    - name: Download Loki archive
+      get_url:
+        url: "{{ loki_download_url }}"
+        dest: /tmp/loki-download
+        mode: "0644"
+      register: loki_archive_download
+
+    - name: Unarchive Loki download
+      unarchive:
+        src: /tmp/loki-download
+        dest: /tmp/loki-unpack
+        remote_src: true
+      when: loki_download_is_zip | bool
+
+    - name: Set Loki binary source
+      set_fact:
+        loki_binary_source: "{{ '/tmp/loki-unpack/loki-linux-amd64' if loki_download_is_zip | bool else '/tmp/loki-download' }}"
+
+    - name: Install Loki binary
+      copy:
+        src: "{{ loki_binary_source }}"
+        dest: /usr/local/bin/loki
+        mode: "0755"
+        owner: root
+        group: root
+        remote_src: true
+
+- name: Read AppRole credentials from local files (Semaphore host)
+  block:
+    - name: Check if Role ID file exists on localhost
+      stat:
+        path: /tmp/loki-role-id.txt
+      register: role_id_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Check if Secret ID file exists on localhost
+      stat:
+        path: /tmp/loki-secret-id.txt
+      register: secret_id_stat
+      delegate_to: localhost
+      become: false
+
+    - name: Fail if credentials not found
+      fail:
+        msg: "AppRole credentials not found on Semaphore host. Run configure-vault.yml playbook first."
+      when: not role_id_stat.stat.exists or not secret_id_stat.stat.exists
+
+    - name: Read Role ID from localhost
+      slurp:
+        src: /tmp/loki-role-id.txt
+      register: role_id_file
+      delegate_to: localhost
+      become: false
+
+    - name: Read Secret ID from localhost
+      slurp:
+        src: /tmp/loki-secret-id.txt
+      register: secret_id_file
+      delegate_to: localhost
+      become: false
+
+    - name: Set AppRole credentials
+      set_fact:
+        loki_vault_role_id: "{{ role_id_file.content | b64decode | trim }}"
+        loki_vault_secret_id: "{{ secret_id_file.content | b64decode | trim }}"
+        cacheable: true
+
+- name: Retrieve S3 credentials from Vault using AppRole
+  block:
+    - name: Authenticate with Vault using AppRole
+      uri:
+        url: "{{ vault_addr }}/v1/auth/approle/login"
+        method: POST
+        body_format: json
+        body:
+          role_id: "{{ loki_vault_role_id }}"
+          secret_id: "{{ loki_vault_secret_id }}"
+        status_code: 200
+        validate_certs: false
+      register: vault_auth_result
+      check_mode: false
+
+    - name: Retrieve S3 credentials from Vault
+      uri:
+        url: "{{ vault_addr }}/v1/secret/data/garage/loki/credentials"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_auth_result.json.auth.client_token }}"
+        status_code: 200
+        validate_certs: false
+      register: s3_credentials_result
+      check_mode: false
+
+    - name: Set S3 credentials fact
+      set_fact:
+        loki_s3_access_key: "{{ s3_credentials_result.json.data.data.access_key_id }}"
+        loki_s3_secret_key: "{{ s3_credentials_result.json.data.data.secret_access_key }}"
+        loki_s3_bucket: "{{ s3_credentials_result.json.data.data.bucket_name | default('loki') }}"
+        cacheable: true
+
+- name: Generate Loki configuration
+  template:
+    src: loki-config.yml.j2
+    dest: /etc/loki/loki-config.yml
+    owner: loki
+    group: loki
+    mode: "0640"
+  notify: restart loki
+
+- name: Create loki log file
+  file:
+    path: /var/log/loki.log
+    state: touch
+    owner: loki
+    group: loki
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Create Loki OpenRC service
+  template:
+    src: loki.service.j2
+    dest: /etc/init.d/loki
+    mode: "0755"
+  notify: restart loki
+
+- name: Enable and start Loki service
+  service:
+    name: loki
+    state: started
+    enabled: true
+
+- name: Wait for Loki to be ready
+  wait_for:
+    host: localhost
+    port: "{{ loki_http_port }}"
+    delay: 2
+    timeout: 60
+    state: started
+
+- name: Check Loki ready endpoint
+  uri:
+    url: "http://localhost:{{ loki_http_port }}/ready"
+    method: GET
+    status_code: 200
+  retries: 10
+  delay: 2
+  register: loki_ready_result
+  until: loki_ready_result.status == 200
+
+- name: Verify Loki is running
+  command: /usr/bin/pgrep -f loki
+  register: loki_process
+  changed_when: false
+  failed_when: loki_process.rc != 0
+
+- name: Display Loki status
+  debug:
+    msg:
+      - "Loki successfully deployed to {{ inventory_hostname }}"
+      - "Configuration: /etc/loki/loki-config.yml"
+      - "Data directory: /var/lib/loki"
+      - "HTTP endpoint: http://localhost:{{ loki_http_port }}"
+      - "Metrics endpoint: http://localhost:{{ loki_http_port }}/metrics"

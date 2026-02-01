@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  author: "Ansible Role Author"
+  description: "Deploy Loki log aggregation system with S3/Garage backend"
+  company: ""
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Alpine
+      versions:
+        - "3.16"
+        - "3.17"
+        - "3.18"
+        - "3.19"
+        - "3.20"
+        - "3.21"
+        - "3.22"
+        - "3.23"
+
+  galaxy_tags:
+    - monitoring
+    - loki
+    - logs
+    - s3
+    - vault
+
+dependencies: []

@@ -12,6 +12,9 @@
     app_policy_name: "{{ app_name }}-s3-access"
     app_role_id_file: "/tmp/{{ app_name }}-role-id.txt"
     app_secret_id_file: "/tmp/{{ app_name }}-secret-id.txt"
+    regenerate_secret_id: false
+    store_secret_id_in_vault: true
+    secret_id_storage_path: "secret/data/approle/{{ app_name }}"
 
   tasks:
     - name: Verify app_name is set
@@ -27,6 +30,16 @@
           - vault_token | length > 0
         fail_msg: "vault_token must be set via survey or VAULT_TOKEN env var"
 
+    - name: Check enabled auth methods
+      uri:
+        url: "{{ vault_addr }}/v1/sys/auth"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        status_code: 200
+        validate_certs: false
+      register: auth_methods_result
+
     - name: Enable AppRole auth method
       uri:
         url: "{{ vault_addr }}/v1/sys/auth/approle"
@@ -39,7 +52,7 @@
           description: "AppRole auth method for service authentication"
         status_code: [200, 204]
         validate_certs: false
-      ignore_errors: true  # Ignore if already enabled
+      when: "'approle/' not in (auth_methods_result.json.data | default({}))"
 
     - name: "Create {{ app_role_name }} AppRole"
       uri:
@@ -88,6 +101,32 @@
         validate_certs: false
       register: role_id_result
 
+    - name: Check stored Secret ID in Vault
+      uri:
+        url: "{{ vault_addr }}/v1/{{ secret_id_storage_path }}"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        status_code: [200, 404]
+        validate_certs: false
+      register: stored_secret_result
+      when: store_secret_id_in_vault | bool
+
+    - name: Set existing Secret ID fact
+      set_fact:
+        existing_secret_id: "{{ stored_secret_result.json.data.data.secret_id }}"
+      when:
+        - store_secret_id_in_vault | bool
+        - stored_secret_result.status == 200
+        - stored_secret_result.json.data.data.secret_id is defined
+
+    - name: Check for existing Secret ID file
+      stat:
+        path: "{{ app_secret_id_file }}"
+      become: false
+      delegate_to: localhost
+      register: secret_id_file_stat
+
     - name: "Generate {{ app_role_name }} Secret ID"
       uri:
         url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/secret-id"
@@ -99,6 +138,36 @@
         status_code: 200
         validate_certs: false
       register: secret_id_result
+      when:
+        - regenerate_secret_id | bool or (secret_id_file_stat.stat.exists | default(false) == false)
+        - existing_secret_id is not defined
+
+    - name: Set Secret ID value from Vault
+      set_fact:
+        secret_id_value: "{{ existing_secret_id }}"
+      when: existing_secret_id is defined
+
+    - name: Set Secret ID value from generation
+      set_fact:
+        secret_id_value: "{{ secret_id_result.json.data.secret_id }}"
+      when: secret_id_result.json.data.secret_id is defined
+
+    - name: Store Secret ID in Vault
+      uri:
+        url: "{{ vault_addr }}/v1/{{ secret_id_storage_path }}"
+        method: POST
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        body_format: json
+        body:
+          data:
+            secret_id: "{{ secret_id_value }}"
+            role_id: "{{ role_id_result.json.data.role_id }}"
+        status_code: [200, 204]
+        validate_certs: false
+      when:
+        - store_secret_id_in_vault | bool
+        - secret_id_result.json.data.secret_id is defined
 
     - name: "Write AppRole credentials for {{ app_name }}"
       block:
@@ -113,12 +182,14 @@
 
         - name: Write Secret ID to file
           copy:
-            content: "{{ secret_id_result.json.data.secret_id }}"
+            content: "{{ secret_id_value }}"
             dest: "{{ app_secret_id_file }}"
             mode: "0600"
           become: false
           delegate_to: localhost
-          when: secret_id_result.json.data.secret_id is defined
+          when:
+            - secret_id_value is defined
+            - regenerate_secret_id | bool or (secret_id_file_stat.stat.exists | default(false) == false)
 
         - name: Display AppRole credentials
           debug:

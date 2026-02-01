@@ -1,0 +1,48 @@
+---
+- name: Deploy Loki to lxc-loki
+  hosts: lxc-loki
+  become: true
+  vars:
+    # Override defaults from group_vars/monitoring.yml if needed
+    # s3_endpoint: "https://garage.example.com:3900"
+    # loki_s3_bucket: "loki"
+
+  roles:
+    - common
+    - loki
+
+  post_tasks:
+    - name: Display Loki deployment summary
+      debug:
+        msg:
+          - "============================================"
+          - "Loki deployment completed successfully"
+          - "============================================"
+          - "Host: {{ inventory_hostname }}"
+          - "IP Address: {{ ansible_host }}"
+          - "HTTP Port: {{ loki_http_port }}"
+          - "gRPC Port: {{ loki_grpc_port }}"
+          - "Data Directory: {{ loki_data_dir }}"
+          - "Configuration: /etc/loki/loki-config.yml"
+          - ""
+          - "Storage Configuration:"
+          - "  Local WAL: {{ loki_wal_dir }}"
+          - "  Remote Backend: S3/Garage"
+          - "  S3 Bucket: {{ loki_s3_bucket }}"
+          - "  S3 Endpoint: {{ s3_endpoint }}"
+          - "  Retention: {{ loki_retention_hours }} hours"
+          - ""
+          - "Vault Configuration:"
+          - "  Vault Address: {{ vault_addr }}"
+          - "  Auth Method: AppRole"
+          - "  AppRole: loki-app"
+          - ""
+          - "Service Status:"
+          - "  Service: loki"
+          - "  Status: {{ ansible_service_mgr }}"
+          - ""
+          - "Next Steps:"
+          - "1. Verify Loki is running: ssh root@{{ inventory_hostname }} 'pgrep loki'"
+          - "2. Check logs: ssh root@{{ inventory_hostname }} 'tail -f /var/log/loki.log'"
+          - "3. Test API: curl -s http://{{ ansible_host }}:{{ loki_http_port }}/ready"
+          - "4. View metrics: curl -s http://{{ ansible_host }}:{{ loki_http_port }}/metrics"

@@ -1,0 +1,29 @@
+---
+# Loki role defaults
+
+# HTTP and gRPC ports
+loki_http_port: 3100
+loki_grpc_port: 9096
+
+# Loki data directories
+loki_data_dir: /var/lib/loki
+loki_wal_dir: "{{ loki_data_dir }}/wal"
+loki_index_dir: "{{ loki_data_dir }}/tsdb-index"
+loki_cache_dir: "{{ loki_data_dir }}/tsdb-cache"
+loki_compactor_dir: "{{ loki_data_dir }}/compactor"
+
+# Retention policy (in hours)
+# 7 days = 168 hours
+loki_retention_hours: 168
+
+# S3/Garage bucket configuration
+# These should be overridden in group_vars or inventory
+s3_endpoint: "http://nas1.lan.schlaefli.dev:3900"
+s3_region: "garage"
+s3_insecure: false
+s3_skip_verify: false
+loki_s3_force_path_style: true
+
+# Vault configuration
+vault_addr: "https://vault.lan.schlaefli.dev"
+vault_skip_verify: false
