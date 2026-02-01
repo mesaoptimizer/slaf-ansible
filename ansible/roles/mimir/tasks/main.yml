@@ -36,6 +36,7 @@
         url: https://api.github.com/repos/grafana/mimir/releases/latest
         return_content: true
       register: mimir_release
+      check_mode: false
 
     - name: Extract download URL for Linux amd64
       set_fact:
