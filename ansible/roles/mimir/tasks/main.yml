@@ -145,6 +145,16 @@
     mode: "0640"
   notify: restart mimir
 
+- name: Create mimir log file
+  file:
+    path: /var/log/mimir.log
+    state: touch
+    owner: mimir
+    group: mimir
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
 - name: Create Mimir systemd service
   template:
     src: mimir.service.j2
@@ -159,15 +169,22 @@
     enabled: true
 
 - name: Wait for Mimir to be ready
+  wait_for:
+    host: localhost
+    port: "{{ mimir_http_port }}"
+    delay: 2
+    timeout: 60
+    state: started
+
+- name: Check Mimir ready endpoint
   uri:
     url: "http://localhost:{{ mimir_http_port }}/ready"
     method: GET
     status_code: 200
-  retries: 60
-  delay: 5
+  retries: 10
+  delay: 2
   register: mimir_ready_result
   until: mimir_ready_result.status == 200
-  ignore_errors: true
 
 - name: Verify Mimir is running
   command: /usr/bin/pgrep -f mimir

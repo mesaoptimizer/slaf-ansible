@@ -20,6 +20,8 @@ start() {
 		--pidfile "$pidfile" \
 		--background \
 		--make-pidfile \
+		--stdout "$logfile" \
+		--stderr "$logfile" \
 		--exec $command \
 		-- $command_args
 	eend $?
