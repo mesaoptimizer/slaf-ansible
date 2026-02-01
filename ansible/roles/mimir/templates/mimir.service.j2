@@ -6,6 +6,7 @@ description="Mimir time-series database"
 command="/usr/local/bin/mimir"
 command_args="-config.file=/etc/mimir/mimir-config.yml"
 command_user="mimir:mimir"
+directory="{{ mimir_data_dir }}"
 pidfile="/run/mimir.pid"
 logfile="/var/log/mimir.log"
 

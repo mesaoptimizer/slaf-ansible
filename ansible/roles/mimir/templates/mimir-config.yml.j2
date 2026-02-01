@@ -60,6 +60,9 @@ server:
   grpc_listen_port: {{ mimir_grpc_port }}
   log_format: json
 
+activity_tracker:
+  filepath: {{ mimir_data_dir }}/metrics-activity.log
+
 ruler_storage:
   backend: local
   local:
