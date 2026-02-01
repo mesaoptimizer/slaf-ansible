@@ -60,30 +60,6 @@
         validate_certs: false
       register: approle_create_result
 
-    - name: "Get {{ app_role_name }} Role ID"
-      uri:
-        url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/role-id"
-        method: GET
-        headers:
-          X-Vault-Token: "{{ vault_token }}"
-        status_code: 200
-        validate_certs: false
-      register: role_id_result
-      check_mode: false
-
-    - name: "Generate {{ app_role_name }} Secret ID"
-      uri:
-        url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/secret-id"
-        method: POST
-        headers:
-          X-Vault-Token: "{{ vault_token }}"
-        body_format: json
-        body: {}
-        status_code: 200
-        validate_certs: false
-      register: secret_id_result
-      check_mode: false
-
     - name: "Create {{ app_policy_name }} policy"
       uri:
         url: "{{ vault_addr }}/v1/sys/policies/acl/{{ app_policy_name }}"
@@ -102,6 +78,28 @@
         status_code: [200, 204]
         validate_certs: false
 
+    - name: "Get {{ app_role_name }} Role ID"
+      uri:
+        url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/role-id"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        status_code: 200
+        validate_certs: false
+      register: role_id_result
+
+    - name: "Generate {{ app_role_name }} Secret ID"
+      uri:
+        url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/secret-id"
+        method: POST
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        body_format: json
+        body: {}
+        status_code: 200
+        validate_certs: false
+      register: secret_id_result
+
     - name: "Write AppRole credentials for {{ app_name }}"
       block:
         - name: Write Role ID to file
@@ -111,6 +109,7 @@
             mode: "0600"
           become: false
           delegate_to: localhost
+          when: role_id_result.json.data.role_id is defined
 
         - name: Write Secret ID to file
           copy:
@@ -119,6 +118,7 @@
             mode: "0600"
           become: false
           delegate_to: localhost
+          when: secret_id_result.json.data.secret_id is defined
 
         - name: Display AppRole credentials
           debug:
@@ -126,8 +126,8 @@
               - "AppRole successfully configured in Vault for {{ app_name }}"
               - "AppRole: {{ app_role_name }}"
               - "Policy: {{ app_policy_name }}"
-              - "Role ID: {{ role_id_result.json.data.role_id }}"
-              - "Secret ID: {{ secret_id_result.json.data.secret_id }}"
+              - "Role ID: {{ role_id_result.json.data.role_id | default('(skipped in check mode)') }}"
+              - "Secret ID: {{ secret_id_result.json.data.secret_id | default('(skipped in check mode)') }}"
               - "Credentials saved to:"
               - "  - {{ app_role_id_file }}"
               - "  - {{ app_secret_id_file }}"
