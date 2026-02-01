@@ -6,9 +6,9 @@ vault_addr: "https://vault.lan.schlaefli.dev"
 vault_skip_verify: false
 
 # Garage S3 configuration
-s3_endpoint: "http://nas1.lan.schlaefli.dev:3900"
+s3_endpoint: "nas1.lan.schlaefli.dev:3900"
 s3_region: "garage"
-s3_insecure: false
+s3_insecure: true
 s3_skip_verify: true  # For self-signed certs from Garage
 
 # Mimir configuration
