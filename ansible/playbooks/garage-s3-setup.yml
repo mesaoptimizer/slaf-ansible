@@ -38,11 +38,14 @@
       command: docker ps --format '{% raw %}{{.Names}}{% endraw %}'
       register: docker_ps
       changed_when: false
+      check_mode: false
 
     - name: Fail if Garage container is not running
       fail:
         msg: "Garage container '{{ garage_container_name }}' is not running on {{ inventory_hostname }}"
-      when: garage_container_name not in docker_ps.stdout_lines
+      when:
+        - not ansible_check_mode
+        - garage_container_name not in docker_ps.stdout_lines
 
     - name: Set Garage CLI command
       set_fact:
