@@ -1,6 +1,6 @@
 ---
 - name: Bootstrap hosts
-  hosts: homelab
+  hosts: monitoring:dns:security:media
   gather_facts: false
   tasks:
     - name: Try to gather facts (may fail on fresh hosts)

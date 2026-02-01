@@ -3,3 +3,7 @@
   ansible.builtin.apt:
     update_cache: true
   when: ansible_os_family == 'Debian'
+- name: Ensure apk cache is up to date
+  community.general.apk:
+    update_cache: true
+  when: ansible_os_family == 'Alpine'
