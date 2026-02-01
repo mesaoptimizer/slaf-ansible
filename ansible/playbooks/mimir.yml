@@ -1,0 +1,48 @@
+---
+- name: Deploy Mimir to lxc-mimir
+  hosts: lxc-mimir
+  become: true
+  vars:
+    # Override defaults from group_vars/monitoring.yml if needed
+    # s3_endpoint: "https://garage.example.com:3900"
+    # mimir_s3_bucket: "mimir"
+    
+  roles:
+    - common
+    - mimir
+  
+  post_tasks:
+    - name: Display Mimir deployment summary
+      debug:
+        msg:
+          - "============================================"
+          - "Mimir deployment completed successfully"
+          - "============================================"
+          - "Host: {{ inventory_hostname }}"
+          - "IP Address: {{ ansible_host }}"
+          - "HTTP Port: {{ mimir_http_port }}"
+          - "gRPC Port: {{ mimir_grpc_port }}"
+          - "Data Directory: {{ mimir_data_dir }}"
+          - "Configuration: /etc/mimir/mimir-config.yml"
+          - ""
+          - "Storage Configuration:"
+          - "  Local TSDB: {{ mimir_tsdb_dir }} (13h retention)"
+          - "  Remote Backend: S3/Garage"
+          - "  S3 Bucket: {{ mimir_s3_bucket }}"
+          - "  S3 Endpoint: {{ s3_endpoint }}"
+          - "  Block Retention: 7 days (168h)"
+          - ""
+          - "Vault Configuration:"
+          - "  Vault Address: {{ vault_addr }}"
+          - "  Auth Method: AppRole"
+          - "  AppRole: mimir-app"
+          - ""
+          - "Service Status:"
+          - "  Service: mimir"
+          - "  Status: {{ ansible_service_mgr }}"
+          - ""
+          - "Next Steps:"
+          - "1. Verify Mimir is running: ssh root@{{ inventory_hostname }} 'pgrep mimir'"
+          - "2. Check logs: ssh root@{{ inventory_hostname }} 'tail -f /var/log/mimir.log'"
+          - "3. Test API: curl -s http://{{ ansible_host }}:{{ mimir_http_port }}/ready"
+          - "4. View metrics: curl -s http://{{ ansible_host }}:{{ mimir_http_port }}/metrics"

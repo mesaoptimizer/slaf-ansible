@@ -1,0 +1,11 @@
+---
+- name: restart mimir
+  service:
+    name: mimir
+    state: restarted
+    enabled: true
+
+- name: reload mimir
+  service:
+    name: mimir
+    state: reloaded

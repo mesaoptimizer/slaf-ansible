@@ -1,0 +1,132 @@
+---
+- name: Configure HashiCorp Vault for Mimir
+  hosts: lxc-hashicorpvault
+  vars:
+    vault_addr: "http://127.0.0.1:8200"
+    vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    mimir_role_id_file: "/tmp/mimir-role-id.txt"
+    mimir_secret_id_file: "/tmp/mimir-secret-id.txt"
+
+  tasks:
+    - name: Verify Vault token is set
+      assert:
+        that:
+          - vault_token | length > 0
+        fail_msg: "VAULT_TOKEN environment variable must be set"
+
+    - name: Enable AppRole auth method
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: sys/auth/approle
+        method: POST
+        data:
+          type: approle
+          description: "AppRole auth method for service authentication"
+      ignore_errors: true  # Ignore if already enabled
+
+    - name: Create mimir-app AppRole
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: auth/approle/role/mimir-app
+        method: POST
+        data:
+          token_type: batch
+          token_ttl: "20m"
+          token_max_ttl: "1h"
+          secret_id_ttl: "24h"
+          secret_id_num_uses: 0
+          token_policies:
+            - mimir-s3-access
+      register: approle_create_result
+
+    - name: Get AppRole Role ID
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: auth/approle/role/mimir-app/role-id
+      register: role_id_result
+
+    - name: Generate AppRole Secret ID
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: auth/approle/role/mimir-app/secret-id
+        method: POST
+      register: secret_id_result
+
+    - name: Create mimir-s3-access policy
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: sys/policies/acl/mimir-s3-access
+        method: POST
+        data:
+          policy: |
+            path "secret/data/mimir/s3/*" {
+              capabilities = ["read", "list"]
+            }
+            path "auth/approle/role/mimir-app/secret-id" {
+              capabilities = ["update"]
+            }
+
+    - name: Store Garage S3 credentials in Vault
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: secret/data/mimir/s3/credentials
+        method: POST
+        data:
+          data:
+            access_key_id: "{{ vault_s3_access_key_id }}"
+            secret_access_key: "{{ vault_s3_secret_access_key }}"
+            bucket_name: "{{ vault_s3_bucket_name | default('mimir') }}"
+      when: vault_s3_access_key_id is defined and vault_s3_secret_access_key is defined
+
+    - name: Write AppRole credentials to local facts for Mimir playbook
+      block:
+        - name: Write Role ID to file
+          copy:
+            content: "{{ role_id_result.secret.data.role_id }}"
+            dest: "{{ mimir_role_id_file }}"
+            mode: "0600"
+          become: false
+          delegate_to: localhost
+
+        - name: Write Secret ID to file
+          copy:
+            content: "{{ secret_id_result.secret.data.secret_id }}"
+            dest: "{{ mimir_secret_id_file }}"
+            mode: "0600"
+          become: false
+          delegate_to: localhost
+
+        - name: Display AppRole credentials
+          debug:
+            msg:
+              - "AppRole successfully configured in Vault"
+              - "Role ID: {{ role_id_result.secret.data.role_id }}"
+              - "Secret ID: {{ secret_id_result.secret.data.secret_id }}"
+              - "Credentials saved to:"
+              - "  - {{ mimir_role_id_file }}"
+              - "  - {{ mimir_secret_id_file }}"
+              - "Keep these files safe for mimir.yml playbook deployment"
+
+    - name: Verify AppRole setup
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: auth/approle/role/mimir-app
+      register: approle_verify_result
+
+    - name: Display AppRole configuration
+      debug:
+        var: approle_verify_result.secret.data

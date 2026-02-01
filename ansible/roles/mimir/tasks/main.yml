@@ -1,0 +1,166 @@
+---
+- name: Install Mimir dependencies
+  apk:
+    name:
+      - curl
+      - ca-certificates
+      - libcap
+    state: present
+    update_cache: true
+
+- name: Create mimir system user
+  user:
+    name: mimir
+    shell: /sbin/nologin
+    home: /var/lib/mimir
+    createhome: true
+    system: true
+    state: present
+
+- name: Create mimir directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: mimir
+    group: mimir
+    mode: "0750"
+  loop:
+    - /var/lib/mimir
+    - /var/lib/mimir/tsdb
+    - /etc/mimir
+
+- name: Download Mimir binary
+  block:
+    - name: Get latest Mimir release
+      uri:
+        url: https://api.github.com/repos/grafana/mimir/releases/latest
+        return_content: true
+      register: mimir_release
+
+    - name: Extract download URL for Linux amd64
+      set_fact:
+        mimir_download_url: "{{ mimir_release.json.assets | selectattr('name', 'match', 'mimir-linux-amd64') | map(attribute='browser_download_url') | first }}"
+
+    - name: Download Mimir binary
+      get_url:
+        url: "{{ mimir_download_url }}"
+        dest: /usr/local/bin/mimir
+        mode: "0755"
+        owner: root
+        group: root
+      register: mimir_binary_download
+
+- name: Set capabilities for Mimir binary
+  capabilities:
+    path: /usr/local/bin/mimir
+    capability: "{{ item }}"
+    state: present
+  loop:
+    - "cap_net_bind_service=ep"
+
+- name: Read AppRole credentials from local files
+  block:
+    - name: Check if Role ID file exists
+      stat:
+        path: /tmp/mimir-role-id.txt
+      register: role_id_stat
+
+    - name: Check if Secret ID file exists
+      stat:
+        path: /tmp/mimir-secret-id.txt
+      register: secret_id_stat
+
+    - name: Fail if credentials not found
+      fail:
+        msg: "AppRole credentials not found. Run configure-vault.yml playbook first."
+      when: not role_id_stat.stat.exists or not secret_id_stat.stat.exists
+
+    - name: Read Role ID
+      slurp:
+        src: /tmp/mimir-role-id.txt
+      register: role_id_file
+
+    - name: Read Secret ID
+      slurp:
+        src: /tmp/mimir-secret-id.txt
+      register: secret_id_file
+
+    - name: Set AppRole credentials
+      set_fact:
+        mimir_vault_role_id: "{{ role_id_file.content | b64decode | trim }}"
+        mimir_vault_secret_id: "{{ secret_id_file.content | b64decode | trim }}"
+        cacheable: true
+
+- name: Retrieve S3 credentials from Vault using AppRole
+  block:
+    - name: Authenticate with Vault using AppRole
+      community.general.hashi_vault:
+        auth_method: approle
+        url: "{{ vault_addr }}"
+        role_id: "{{ mimir_vault_role_id }}"
+        secret_id: "{{ mimir_vault_secret_id }}"
+        path: auth/approle/login
+      register: vault_auth_result
+
+    - name: Retrieve S3 credentials from Vault
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_auth_result.login.auth.client_token }}"
+        path: secret/data/mimir/s3/credentials
+      register: s3_credentials_result
+
+    - name: Set S3 credentials fact
+      set_fact:
+        mimir_s3_access_key: "{{ s3_credentials_result.secret.data.data.access_key_id }}"
+        mimir_s3_secret_key: "{{ s3_credentials_result.secret.data.data.secret_access_key }}"
+        mimir_s3_bucket: "{{ s3_credentials_result.secret.data.data.bucket_name | default('mimir') }}"
+        cacheable: true
+
+- name: Generate Mimir configuration
+  template:
+    src: mimir-config.yml.j2
+    dest: /etc/mimir/mimir-config.yml
+    owner: mimir
+    group: mimir
+    mode: "0640"
+  notify: restart mimir
+
+- name: Create Mimir systemd service
+  template:
+    src: mimir.service.j2
+    dest: /etc/init.d/mimir
+    mode: "0755"
+  notify: restart mimir
+
+- name: Enable and start Mimir service
+  service:
+    name: mimir
+    state: started
+    enabled: true
+
+- name: Wait for Mimir to be ready
+  uri:
+    url: "http://localhost:{{ mimir_http_port }}/ready"
+    method: GET
+    status_code: 200
+  retries: 30
+  delay: 2
+  register: mimir_ready_result
+  until: mimir_ready_result.status == 200
+  ignore_errors: true
+
+- name: Verify Mimir is running
+  command: /usr/bin/pgrep -f mimir
+  register: mimir_process
+  changed_when: false
+  failed_when: mimir_process.rc != 0
+
+- name: Display Mimir status
+  debug:
+    msg:
+      - "Mimir successfully deployed to {{ inventory_hostname }}"
+      - "Configuration: /etc/mimir/mimir-config.yml"
+      - "Data directory: /var/lib/mimir"
+      - "HTTP endpoint: http://localhost:{{ mimir_http_port }}"
+      - "Metrics endpoint: http://localhost:{{ mimir_http_port }}/metrics"

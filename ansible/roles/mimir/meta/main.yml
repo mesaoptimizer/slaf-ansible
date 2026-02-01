@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  author: "Ansible Role Author"
+  description: "Deploy Mimir time-series database in single-binary mode with S3/Garage backend"
+  company: ""
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Alpine
+      versions:
+        - "3.16"
+        - "3.17"
+        - "3.18"
+        - "3.19"
+
+  galaxy_tags:
+    - monitoring
+    - mimir
+    - timeseries
+    - s3
+    - vault
+
+dependencies: []

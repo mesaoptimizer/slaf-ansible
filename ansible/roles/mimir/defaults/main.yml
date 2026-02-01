@@ -1,0 +1,37 @@
+---
+# Mimir role defaults
+
+# HTTP and gRPC ports
+mimir_http_port: 9009
+mimir_grpc_port: 9010
+
+# Mimir data directories
+mimir_data_dir: /var/lib/mimir
+mimir_tsdb_dir: "{{ mimir_data_dir }}/tsdb"
+
+# Local TSDB retention (in hours)
+# Data will be shipped to S3 after this period
+mimir_tsdb_retention_hours: 13
+
+# S3/Garage bucket configuration
+# These should be overridden in group_vars or inventory
+s3_endpoint: "https://garage.example.com"
+s3_region: "us-east-1"
+s3_insecure: false
+s3_skip_verify: false
+
+# Vault configuration
+vault_addr: "http://lxc-hashicorpvault:8200"
+vault_skip_verify: false
+
+# Mimir compactor settings
+mimir_compaction_interval: 30m
+mimir_cleanup_interval: 1h
+
+# Block retention policy (in hours)
+# 7 days = 168 hours
+mimir_block_retention_hours: 168
+
+# Limits and configuration
+mimir_max_ingestion_rate: 100000
+mimir_max_ingestion_burst: 200000

@@ -1,0 +1,127 @@
+---
+- name: Create Garage S3 bucket and key, store in Vault
+  hosts: nas1
+  become: true
+  vars_prompt:
+    - name: app_name
+      prompt: "Application name (used for bucket/key/Vault path)"
+      private: false
+  vars:
+    garage_container_name: "garage"
+    garage_bucket_name: "{{ app_name }}"
+    garage_key_name: "{{ app_name }}-app-key"
+    garage_key_force_rotate: false
+    garage_allow_read: true
+    garage_allow_write: true
+    garage_allow_owner: false
+
+    vault_addr: "https://vault.lan.schlaefli.dev"
+    vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    vault_s3_secret_path: "secret/data/garage/{{ app_name }}/credentials"
+
+  tasks:
+    - name: Verify app_name is set
+      assert:
+        that:
+          - app_name is defined
+          - app_name | trim | length > 0
+        fail_msg: "app_name must be set via survey"
+
+    - name: Verify Vault token is set
+      assert:
+        that:
+          - vault_token | length > 0
+        fail_msg: "VAULT_TOKEN environment variable must be set"
+
+    - name: Check Garage container is running
+      command: docker ps --format '{{.Names}}'
+      register: docker_ps
+      changed_when: false
+
+    - name: Fail if Garage container is not running
+      fail:
+        msg: "Garage container '{{ garage_container_name }}' is not running on {{ inventory_hostname }}"
+      when: garage_container_name not in docker_ps.stdout_lines
+
+    - name: Set Garage CLI command
+      set_fact:
+        garage_cli: "docker exec {{ garage_container_name }} garage"
+
+    - name: List existing buckets
+      command: "{{ garage_cli }} bucket list"
+      register: garage_bucket_list
+      changed_when: false
+
+    - name: Check if bucket exists
+      set_fact:
+        garage_bucket_exists: "{{ garage_bucket_name in garage_bucket_list.stdout }}"
+
+    - name: Create bucket
+      command: "{{ garage_cli }} bucket create {{ garage_bucket_name }}"
+      when: not garage_bucket_exists
+
+    - name: List existing keys
+      command: "{{ garage_cli }} key list"
+      register: garage_key_list
+      changed_when: false
+
+    - name: Check if key exists
+      set_fact:
+        garage_key_exists: "{{ garage_key_name in garage_key_list.stdout }}"
+
+    - name: Fail if key exists and rotation not enabled
+      fail:
+        msg: >-
+          Garage key '{{ garage_key_name }}' already exists. Set garage_key_force_rotate=true
+          or change garage_key_name to create a new key.
+      when: garage_key_exists and not garage_key_force_rotate
+
+    - name: Set key name for creation
+      set_fact:
+        garage_key_create_name: >-
+          {{ garage_key_name if not garage_key_exists else garage_key_name ~ '-' ~ ansible_date_time.epoch }}
+
+    - name: Create key
+      command: "{{ garage_cli }} key create {{ garage_key_create_name }}"
+      register: garage_key_create
+      when: not garage_key_exists or garage_key_force_rotate
+
+    - name: Parse key ID and secret
+      set_fact:
+        garage_key_id: "{{ garage_key_create.stdout | regex_search('Key ID:\\s*(\\S+)', '\\1') }}"
+        garage_secret_key: "{{ garage_key_create.stdout | regex_search('Secret key:\\s*(\\S+)', '\\1') }}"
+        garage_key_effective_name: "{{ garage_key_create_name }}"
+      when: garage_key_create is defined and garage_key_create.stdout is defined
+
+    - name: Build bucket permission flags
+      set_fact:
+        garage_bucket_allow_flags: >-
+          {{
+            (garage_allow_read | bool) | ternary('--read ', '')
+            ~ (garage_allow_write | bool) | ternary('--write ', '')
+            ~ (garage_allow_owner | bool) | ternary('--owner ', '')
+          }}
+
+    - name: Allow key to access bucket
+      command: >-
+        {{ garage_cli }} bucket allow {{ garage_bucket_allow_flags }}{{ garage_bucket_name }} --key {{ garage_key_effective_name }}
+      when: garage_key_effective_name is defined
+
+    - name: Store Garage credentials in Vault
+      delegate_to: localhost
+      community.general.hashi_vault:
+        auth_method: token
+        url: "{{ vault_addr }}"
+        token: "{{ vault_token }}"
+        path: "{{ vault_s3_secret_path }}"
+        method: POST
+        data:
+          data:
+            access_key_id: "{{ garage_key_id }}"
+            secret_access_key: "{{ garage_secret_key }}"
+            bucket_name: "{{ garage_bucket_name }}"
+            key_name: "{{ garage_key_effective_name }}"
+      when:
+        - garage_key_id is defined
+        - garage_secret_key is defined
+        - garage_key_effective_name is defined
