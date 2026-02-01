@@ -16,7 +16,7 @@
     garage_allow_owner: false
 
     vault_addr: "https://vault.lan.schlaefli.dev"
-    vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+    vault_token: "{{ vault_token | default(lookup('env', 'VAULT_TOKEN')) }}"
     vault_skip_verify: false
     vault_s3_secret_path: "secret/data/garage/{{ app_name }}/credentials"
 
@@ -32,7 +32,7 @@
       assert:
         that:
           - vault_token | length > 0
-        fail_msg: "VAULT_TOKEN environment variable must be set"
+        fail_msg: "vault_token must be set via survey or VAULT_TOKEN env var"
 
     - name: Check Garage container is running
       command: docker ps --format '{{.Names}}'
