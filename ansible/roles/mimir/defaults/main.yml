@@ -15,13 +15,13 @@ mimir_tsdb_retention_hours: 13
 
 # S3/Garage bucket configuration
 # These should be overridden in group_vars or inventory
-s3_endpoint: "https://garage.example.com"
-s3_region: "us-east-1"
+s3_endpoint: "http://nas1.lan.schlaefli.dev:3900"
+s3_region: "garage"
 s3_insecure: false
 s3_skip_verify: false
 
 # Vault configuration
-vault_addr: "http://lxc-hashicorpvault:8200"
+vault_addr: "https://vault.lan.schlaefli.dev"
 vault_skip_verify: false
 
 # Mimir compactor settings
