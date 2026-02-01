@@ -69,6 +69,7 @@
         status_code: 200
         validate_certs: false
       register: role_id_result
+      check_mode: false
 
     - name: "Generate {{ app_role_name }} Secret ID"
       uri:
@@ -81,6 +82,7 @@
         status_code: 200
         validate_certs: false
       register: secret_id_result
+      check_mode: false
 
     - name: "Create {{ app_policy_name }} policy"
       uri:
