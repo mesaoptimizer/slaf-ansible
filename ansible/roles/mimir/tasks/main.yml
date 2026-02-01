@@ -58,32 +58,40 @@
   loop:
     - "cap_net_bind_service=ep"
 
-- name: Read AppRole credentials from local files
+- name: Read AppRole credentials from local files (Semaphore host)
   block:
-    - name: Check if Role ID file exists
+    - name: Check if Role ID file exists on localhost
       stat:
         path: /tmp/mimir-role-id.txt
       register: role_id_stat
+      delegate_to: localhost
+      become: false
 
-    - name: Check if Secret ID file exists
+    - name: Check if Secret ID file exists on localhost
       stat:
         path: /tmp/mimir-secret-id.txt
       register: secret_id_stat
+      delegate_to: localhost
+      become: false
 
     - name: Fail if credentials not found
       fail:
-        msg: "AppRole credentials not found. Run configure-vault.yml playbook first."
+        msg: "AppRole credentials not found on Semaphore host. Run configure-vault.yml playbook first."
       when: not role_id_stat.stat.exists or not secret_id_stat.stat.exists
 
-    - name: Read Role ID
+    - name: Read Role ID from localhost
       slurp:
         src: /tmp/mimir-role-id.txt
       register: role_id_file
+      delegate_to: localhost
+      become: false
 
-    - name: Read Secret ID
+    - name: Read Secret ID from localhost
       slurp:
         src: /tmp/mimir-secret-id.txt
       register: secret_id_file
+      delegate_to: localhost
+      become: false
 
     - name: Set AppRole credentials
       set_fact:
@@ -94,27 +102,32 @@
 - name: Retrieve S3 credentials from Vault using AppRole
   block:
     - name: Authenticate with Vault using AppRole
-      community.general.hashi_vault:
-        auth_method: approle
-        url: "{{ vault_addr }}"
-        role_id: "{{ mimir_vault_role_id }}"
-        secret_id: "{{ mimir_vault_secret_id }}"
-        path: auth/approle/login
+      uri:
+        url: "{{ vault_addr }}/v1/auth/approle/login"
+        method: POST
+        body_format: json
+        body:
+          role_id: "{{ mimir_vault_role_id }}"
+          secret_id: "{{ mimir_vault_secret_id }}"
+        status_code: 200
+        validate_certs: false
       register: vault_auth_result
 
     - name: Retrieve S3 credentials from Vault
-      community.general.hashi_vault:
-        auth_method: token
-        url: "{{ vault_addr }}"
-        token: "{{ vault_auth_result.login.auth.client_token }}"
-        path: secret/data/mimir/s3/credentials
+      uri:
+        url: "{{ vault_addr }}/v1/secret/data/garage/mimir/credentials"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_auth_result.json.auth.client_token }}"
+        status_code: 200
+        validate_certs: false
       register: s3_credentials_result
 
     - name: Set S3 credentials fact
       set_fact:
-        mimir_s3_access_key: "{{ s3_credentials_result.secret.data.data.access_key_id }}"
-        mimir_s3_secret_key: "{{ s3_credentials_result.secret.data.data.secret_access_key }}"
-        mimir_s3_bucket: "{{ s3_credentials_result.secret.data.data.bucket_name | default('mimir') }}"
+        mimir_s3_access_key: "{{ s3_credentials_result.json.data.data.access_key_id }}"
+        mimir_s3_secret_key: "{{ s3_credentials_result.json.data.data.secret_access_key }}"
+        mimir_s3_bucket: "{{ s3_credentials_result.json.data.data.bucket_name | default('mimir') }}"
         cacheable: true
 
 - name: Generate Mimir configuration
