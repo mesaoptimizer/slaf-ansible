@@ -71,7 +71,7 @@
 
     - name: Set Garage CLI command
       set_fact:
-        garage_cli: "{{ garage_docker_cmd }} exec {{ garage_container_name }} garage"
+        garage_cli: "{{ garage_docker_cmd }} exec {{ garage_container_name }} /garage"
 
     - name: List existing buckets
       command: "{{ garage_cli }} bucket list"
