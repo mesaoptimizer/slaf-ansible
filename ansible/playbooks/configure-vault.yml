@@ -146,3 +146,4 @@
     - name: Display AppRole configuration
       debug:
         var: approle_verify_result.json.data
+      when: approle_verify_result.json is defined
