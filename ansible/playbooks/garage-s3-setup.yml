@@ -8,7 +8,7 @@
       private: false
   vars:
     garage_container_name: "garage"
-    garage_docker_cmd: "docker"
+    garage_docker_cmd: "/usr/local/bin/docker"
     garage_bucket_name: "{{ app_name }}"
     garage_key_name: "{{ app_name }}-app-key"
     garage_key_force_rotate: false
