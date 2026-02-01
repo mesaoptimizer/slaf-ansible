@@ -114,8 +114,8 @@
 
     - name: Parse key ID and secret
       set_fact:
-        garage_key_id: "{{ garage_key_create.stdout | regex_search('Key ID:\\s*(\\S+)', '\\1') }}"
-        garage_secret_key: "{{ garage_key_create.stdout | regex_search('Secret key:\\s*(\\S+)', '\\1') }}"
+        garage_key_id: "{{ (garage_key_create.stdout | regex_search('Key ID:\\s*(\\S+)', '\\1'))[0] }}"
+        garage_secret_key: "{{ (garage_key_create.stdout | regex_search('Secret key:\\s*(\\S+)', '\\1'))[0] }}"
         garage_key_effective_name: "{{ garage_key_create_name }}"
       when: garage_key_create is defined and garage_key_create.stdout is defined
 
