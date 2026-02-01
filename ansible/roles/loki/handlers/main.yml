@@ -1,10 +1,4 @@
 ---
-- name: restart loki
-  service:
-    name: loki
-    state: restarted
-    enabled: true
-
 - name: reload loki
   service:
     name: loki

@@ -157,7 +157,6 @@
     owner: loki
     group: loki
     mode: "0640"
-  notify: restart loki
 
 - name: Create loki log file
   file:
@@ -174,7 +173,6 @@
     src: loki.service.j2
     dest: /etc/init.d/loki
     mode: "0755"
-  notify: restart loki
 
 - name: Enable and start Loki service
   service:
