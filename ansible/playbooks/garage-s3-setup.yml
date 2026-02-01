@@ -8,6 +8,7 @@
       private: false
   vars:
     garage_container_name: "garage"
+    garage_docker_cmd: "docker"
     garage_bucket_name: "{{ app_name }}"
     garage_key_name: "{{ app_name }}-app-key"
     garage_key_force_rotate: false
@@ -34,8 +35,29 @@
           - vault_token | length > 0
         fail_msg: "vault_token must be set via survey or VAULT_TOKEN env var"
 
+    - name: Resolve docker command in PATH
+      shell: "command -v {{ garage_docker_cmd }}"
+      register: docker_cmd_path
+      changed_when: false
+      failed_when: false
+      when: not (garage_docker_cmd is regex('^/'))
+
+    - name: Set resolved docker command path
+      set_fact:
+        garage_docker_cmd: "{{ docker_cmd_path.stdout }}"
+      when:
+        - not (garage_docker_cmd is regex('^/'))
+        - docker_cmd_path.stdout | length > 0
+
+    - name: Fail if docker command not found
+      fail:
+        msg: "Docker command not found. Set garage_docker_cmd to the full path (e.g. /usr/bin/docker)."
+      when:
+        - not (garage_docker_cmd is regex('^/'))
+        - docker_cmd_path.stdout | length == 0
+
     - name: Check Garage container is running
-      command: docker ps --format '{% raw %}{{.Names}}{% endraw %}'
+      command: "{{ garage_docker_cmd }} ps --format '{% raw %}{{.Names}}{% endraw %}'"
       register: docker_ps
       changed_when: false
       check_mode: false
@@ -49,7 +71,7 @@
 
     - name: Set Garage CLI command
       set_fact:
-        garage_cli: "docker exec {{ garage_container_name }} garage"
+        garage_cli: "{{ garage_docker_cmd }} exec {{ garage_container_name }} garage"
 
     - name: List existing buckets
       command: "{{ garage_cli }} bucket list"
