@@ -51,14 +51,6 @@
         group: root
       register: mimir_binary_download
 
-- name: Set capabilities for Mimir binary
-  capabilities:
-    path: /usr/local/bin/mimir
-    capability: "{{ item }}"
-    state: present
-  loop:
-    - "cap_net_bind_service=ep"
-
 - name: Read AppRole credentials from local files (Semaphore host)
   block:
     - name: Check if Role ID file exists on localhost
