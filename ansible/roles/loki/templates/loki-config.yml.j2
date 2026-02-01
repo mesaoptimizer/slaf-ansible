@@ -61,6 +61,7 @@ ingester:
 compactor:
   working_directory: "{{ loki_compactor_dir }}"
   retention_enabled: true
+  delete-request-store: s3
 
 limits_config:
   retention_period: "{{ loki_retention_hours }}h"
