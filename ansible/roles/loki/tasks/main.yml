@@ -70,6 +70,13 @@
         mode: "0644"
       register: loki_archive_download
 
+    - name: Ensure Loki unpack directory exists
+      file:
+        path: /tmp/loki-unpack
+        state: directory
+        mode: "0755"
+      when: loki_download_is_zip | bool
+
     - name: Unarchive Loki download
       unarchive:
         src: /tmp/loki-download
