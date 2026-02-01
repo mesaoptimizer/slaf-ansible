@@ -63,6 +63,9 @@ server:
 activity_tracker:
   filepath: {{ mimir_data_dir }}/metrics-activity.log
 
+ruler:
+  rule_path: {{ mimir_data_dir }}/rules-temp
+
 ruler_storage:
   backend: local
   local:
