@@ -34,6 +34,10 @@
   loop:
     - /var/lib/mimir
     - /var/lib/mimir/tsdb
+    - /var/lib/mimir/compactor
+    - /var/lib/mimir/rules
+    - /var/lib/mimir/alertmanager
+    - /var/lib/mimir/tsdb-sync
     - /etc/mimir
 
 - name: Download Mimir binary
