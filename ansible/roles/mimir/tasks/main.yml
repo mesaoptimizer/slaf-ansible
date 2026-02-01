@@ -105,6 +105,7 @@
         status_code: 200
         validate_certs: false
       register: vault_auth_result
+      check_mode: false
 
     - name: Retrieve S3 credentials from Vault
       uri:
@@ -115,6 +116,7 @@
         status_code: 200
         validate_certs: false
       register: s3_credentials_result
+      check_mode: false
 
     - name: Set S3 credentials fact
       set_fact:
