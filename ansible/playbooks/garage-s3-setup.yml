@@ -35,7 +35,7 @@
         fail_msg: "vault_token must be set via survey or VAULT_TOKEN env var"
 
     - name: Check Garage container is running
-      command: docker ps --format '{{.Names}}'
+      command: docker ps --format '{% raw %}{{.Names}}{% endraw %}'
       register: docker_ps
       changed_when: false
 
