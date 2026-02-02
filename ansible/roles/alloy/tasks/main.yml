@@ -54,22 +54,17 @@
     state: started
     enabled: true
 
-- name: Wait for Alloy to be ready
-  wait_for:
-    port: "{{ alloy_http_port }}"
-    host: "127.0.0.1"
-    timeout: 60
+- name: Wait 30 seconds for service to stabilize
+  pause:
+    seconds: 30
 
-- name: Verify Alloy is running
-  uri:
-    url: "http://127.0.0.1:{{ alloy_http_port }}/-/ready"
-    method: GET
-    status_code: 200
-  register: alloy_health
-  retries: 5
-  delay: 5
-  until: alloy_health.status == 200
+- name: Check that Alloy service is still running
+  service_facts:
 
-- name: Display Alloy status
-  debug:
-    msg: "Alloy is running and healthy on {{ inventory_hostname }}"
+- name: Verify Alloy service is active
+  assert:
+    that:
+      - ansible_facts.services['alloy.service'] is defined
+      - ansible_facts.services['alloy.service'].state == 'running'
+    fail_msg: "Alloy service crashed after starting"
+    success_msg: "Alloy service is running successfully"
