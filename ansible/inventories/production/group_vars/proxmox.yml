@@ -1,0 +1,32 @@
+---
+# Group variables for Proxmox hosts
+
+# Proxmox-specific Alloy config blocks for PVE logs
+alloy_extra_config_blocks:
+  - |
+    // Proxmox VE task logs
+    loki.source.file "pve_tasks" {
+      targets = [
+        {__path__ = "/var/log/pve/tasks/*", log_type = "pve_tasks", instance = "{{ inventory_hostname }}"},
+      ]
+      forward_to = [loki.process.pve.receiver]
+    }
+  - |
+    // Proxmox VE access logs
+    loki.source.file "pve_access" {
+      targets = [
+        {__path__ = "/var/log/pve/access.log", log_type = "pve_access", instance = "{{ inventory_hostname }}"},
+      ]
+      forward_to = [loki.process.pve.receiver]
+    }
+  - |
+    // Process Proxmox logs
+    loki.process "pve" {
+      forward_to = [loki.write.loki.receiver]
+
+      stage.static_labels {
+        values = {
+          job = "proxmox",
+        }
+      }
+    }

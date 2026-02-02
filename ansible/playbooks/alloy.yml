@@ -1,0 +1,24 @@
+---
+- name: Deploy Grafana Alloy
+  hosts: homelab:!kubernetes
+  become: true
+  gather_facts: true
+
+  roles:
+    - common
+    - alloy
+
+  post_tasks:
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "=========================================="
+          - "Alloy Deployment Complete"
+          - "=========================================="
+          - "Host: {{ inventory_hostname }}"
+          - "OS Family: {{ ansible_os_family }}"
+          - "Config: {{ alloy_config_file }}"
+          - "HTTP Port: {{ alloy_http_port }}"
+          - "Mimir Endpoint: {{ mimir_endpoint }}"
+          - "Loki Endpoint: {{ loki_endpoint }}"
+          - "=========================================="

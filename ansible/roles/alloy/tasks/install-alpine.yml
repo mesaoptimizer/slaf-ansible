@@ -1,0 +1,26 @@
+---
+# Alpine specific tasks for Grafana Alloy
+
+- name: Install Alloy dependencies (Alpine)
+  apk:
+    name:
+      - unzip
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Create Alloy log file (Alpine)
+  file:
+    path: "{{ alloy_log_file }}"
+    state: touch
+    owner: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    mode: "0640"
+  changed_when: false
+
+- name: Create Alloy OpenRC service
+  template:
+    src: alloy.openrc.j2
+    dest: /etc/init.d/alloy
+    mode: "0755"
+  notify: restart alloy

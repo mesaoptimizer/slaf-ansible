@@ -1,0 +1,13 @@
+---
+# Handlers for Grafana Alloy role
+
+- name: restart alloy
+  service:
+    name: alloy
+    state: restarted
+    enabled: true
+
+- name: reload alloy
+  service:
+    name: alloy
+    state: reloaded

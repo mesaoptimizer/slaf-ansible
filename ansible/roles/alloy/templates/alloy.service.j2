@@ -1,0 +1,30 @@
+[Unit]
+Description=Grafana Alloy
+Documentation=https://grafana.com/docs/alloy/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ alloy_user }}
+Group={{ alloy_group }}
+ExecStart={{ alloy_binary_path }} run {{ alloy_config_file }} \
+  --storage.path={{ alloy_data_dir }} \
+  --server.http.listen-addr=0.0.0.0:{{ alloy_http_port }} \
+  --server.grpc.listen-addr=0.0.0.0:{{ alloy_grpc_port }}
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+# Allow reading log files
+ReadOnlyPaths=/var/log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,30 @@
+---
+# Debian/Ubuntu specific tasks for Grafana Alloy
+
+- name: Install Alloy dependencies (Debian)
+  apt:
+    name:
+      - unzip
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Create Alloy log file (Debian)
+  file:
+    path: "{{ alloy_log_file }}"
+    state: touch
+    owner: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    mode: "0640"
+  changed_when: false
+
+- name: Create Alloy systemd service
+  template:
+    src: alloy.service.j2
+    dest: /etc/systemd/system/alloy.service
+    mode: "0644"
+  notify: restart alloy
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: true

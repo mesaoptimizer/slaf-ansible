@@ -1,0 +1,55 @@
+---
+# Grafana Alloy default variables
+
+# Remote endpoints
+mimir_endpoint: "http://mimir.home.arpa:9009"
+loki_endpoint: "http://loki.home.arpa:3100"
+
+# Ports
+alloy_http_port: 12345
+alloy_grpc_port: 12346
+
+# Installation
+alloy_version: "latest"
+alloy_binary_path: /usr/local/bin/alloy
+
+# Data and config directories
+alloy_data_dir: /var/lib/alloy
+alloy_config_dir: /etc/alloy
+alloy_config_file: "{{ alloy_config_dir }}/config.alloy"
+
+# User and group
+alloy_user: alloy
+alloy_group: alloy
+
+# Log file (for OpenRC)
+alloy_log_file: /var/log/alloy.log
+
+# Distro-specific log paths for base config
+alloy_log_paths_alpine:
+  - path: "/var/log/messages"
+    log_type: "syslog"
+
+alloy_log_paths_debian:
+  - path: "/var/log/auth.log"
+    log_type: "auth"
+  - path: "/var/log/syslog"
+    log_type: "syslog"
+
+# Scrape interval for metrics
+alloy_scrape_interval: "60s"
+
+# Labels applied to all metrics and logs
+alloy_external_labels:
+  env: "production"
+
+# Extra config blocks to append (list of raw River config strings)
+# Use this in group_vars or host_vars to add service-specific scrapes
+# Example:
+#   alloy_extra_config_blocks:
+#     - |
+#       loki.source.file "myapp" {
+#         targets    = [{"__path__" = "/var/log/myapp/*.log", "log_type" = "myapp"}]
+#         forward_to = [loki.process.filter.receiver]
+#       }
+alloy_extra_config_blocks: []

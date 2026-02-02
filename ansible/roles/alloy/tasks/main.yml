@@ -1,0 +1,111 @@
+---
+# Main tasks for Grafana Alloy role
+
+- name: Create Alloy group
+  group:
+    name: "{{ alloy_group }}"
+    system: true
+    state: present
+
+- name: Create Alloy user
+  user:
+    name: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    system: true
+    shell: /sbin/nologin
+    home: "{{ alloy_data_dir }}"
+    create_home: false
+    state: present
+
+- name: Create Alloy directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    mode: "0750"
+  loop:
+    - "{{ alloy_data_dir }}"
+    - "{{ alloy_config_dir }}"
+
+- name: Get latest Alloy release version
+  uri:
+    url: https://api.github.com/repos/grafana/alloy/releases/latest
+    method: GET
+    return_content: true
+    headers:
+      Accept: application/vnd.github.v3+json
+  register: alloy_latest_release
+  when: alloy_version == "latest"
+
+- name: Set Alloy version fact
+  set_fact:
+    alloy_download_version: "{{ (alloy_version == 'latest') | ternary(alloy_latest_release.json.tag_name | regex_replace('^v', ''), alloy_version) }}"
+
+- name: Determine system architecture
+  set_fact:
+    alloy_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+
+- name: Download and extract Alloy binary
+  unarchive:
+    src: "https://github.com/grafana/alloy/releases/download/v{{ alloy_download_version }}/alloy-linux-{{ alloy_arch }}.zip"
+    dest: /tmp
+    remote_src: true
+  register: alloy_download
+
+- name: Install Alloy binary
+  copy:
+    src: "/tmp/alloy-linux-{{ alloy_arch }}"
+    dest: "{{ alloy_binary_path }}"
+    mode: "0755"
+    remote_src: true
+  notify: restart alloy
+
+- name: Clean up downloaded archive
+  file:
+    path: "/tmp/alloy-linux-{{ alloy_arch }}"
+    state: absent
+
+- name: Generate Alloy configuration
+  template:
+    src: alloy-config.alloy.j2
+    dest: "{{ alloy_config_file }}"
+    owner: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    mode: "0640"
+  notify: restart alloy
+
+# Include distro-specific tasks for service installation
+- name: Include Debian/Ubuntu specific tasks
+  include_tasks: install-debian.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Include Alpine specific tasks
+  include_tasks: install-alpine.yml
+  when: ansible_os_family == 'Alpine'
+
+- name: Enable and start Alloy service
+  service:
+    name: alloy
+    state: started
+    enabled: true
+
+- name: Wait for Alloy to be ready
+  wait_for:
+    port: "{{ alloy_http_port }}"
+    host: "127.0.0.1"
+    timeout: 60
+
+- name: Verify Alloy is running
+  uri:
+    url: "http://127.0.0.1:{{ alloy_http_port }}/-/ready"
+    method: GET
+    status_code: 200
+  register: alloy_health
+  retries: 5
+  delay: 5
+  until: alloy_health.status == 200
+
+- name: Display Alloy status
+  debug:
+    msg: "Alloy is running and healthy on {{ inventory_hostname }}"
