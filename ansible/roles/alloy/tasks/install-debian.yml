@@ -5,8 +5,6 @@
   apt:
     name:
       - apt-transport-https
-      - software-properties-common
-      - wget
       - gpg
     state: present
     update_cache: true
