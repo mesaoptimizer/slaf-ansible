@@ -1,29 +1,49 @@
 ---
 # Debian/Ubuntu specific tasks for Grafana Alloy
 
-- name: Install Alloy dependencies (Debian)
+- name: Install required packages
   apt:
     name:
-      - unzip
-      - ca-certificates
+      - apt-transport-https
+      - software-properties-common
+      - wget
+      - gpg
     state: present
     update_cache: true
 
-- name: Create Alloy log file (Debian)
+- name: Create keyrings directory
   file:
-    path: "{{ alloy_log_file }}"
-    state: touch
-    owner: "{{ alloy_user }}"
-    group: "{{ alloy_group }}"
-    mode: "0640"
-  changed_when: false
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
 
-- name: Create Alloy systemd service
+- name: Download Grafana GPG key
+  get_url:
+    url: https://apt.grafana.com/gpg-full.key
+    dest: /etc/apt/keyrings/grafana.asc
+    mode: "0644"
+
+- name: Add Grafana APT repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+    state: present
+    filename: grafana
+
+- name: Install Alloy from repository
+  apt:
+    name: alloy
+    state: present
+    update_cache: true
+  notify: restart alloy
+
+- name: Override systemd service file
   template:
     src: alloy.service.j2
     dest: /etc/systemd/system/alloy.service
     mode: "0644"
-  notify: restart alloy
+  notify:
+    - reload systemd
+    - restart alloy
 
 - name: Reload systemd daemon
   systemd:

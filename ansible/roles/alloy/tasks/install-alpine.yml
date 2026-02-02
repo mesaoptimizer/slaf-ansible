@@ -4,10 +4,41 @@
 - name: Install Alloy dependencies (Alpine)
   apk:
     name:
-      - unzip
+      - wget
       - ca-certificates
     state: present
     update_cache: true
+
+- name: Determine system architecture
+  set_fact:
+    alloy_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+
+- name: Get latest Alloy release version
+  uri:
+    url: https://api.github.com/repos/grafana/alloy/releases/latest
+    method: GET
+    return_content: true
+    headers:
+      Accept: application/vnd.github.v3+json
+  register: alloy_latest_release
+  when: alloy_version == "latest"
+
+- name: Set Alloy version fact
+  set_fact:
+    alloy_download_version: "{{ (alloy_version == 'latest') | ternary(alloy_latest_release.json.tag_name | regex_replace('^v', ''), alloy_version) }}"
+
+- name: Ensure binary directory exists
+  file:
+    path: "{{ alloy_binary_path | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Download Alloy binary for Alpine
+  get_url:
+    url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_download_version }}/alloy-linux-{{ alloy_arch }}"
+    dest: "{{ alloy_binary_path }}"
+    mode: "0755"
+  notify: restart alloy
 
 - name: Create Alloy log file (Alpine)
   file:

@@ -28,43 +28,7 @@
     - "{{ alloy_data_dir }}"
     - "{{ alloy_config_dir }}"
 
-- name: Get latest Alloy release version
-  uri:
-    url: https://api.github.com/repos/grafana/alloy/releases/latest
-    method: GET
-    return_content: true
-    headers:
-      Accept: application/vnd.github.v3+json
-  register: alloy_latest_release
-  when: alloy_version == "latest"
-
-- name: Set Alloy version fact
-  set_fact:
-    alloy_download_version: "{{ (alloy_version == 'latest') | ternary(alloy_latest_release.json.tag_name | regex_replace('^v', ''), alloy_version) }}"
-
-- name: Determine system architecture
-  set_fact:
-    alloy_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
-
-- name: Download and extract Alloy binary
-  unarchive:
-    src: "https://github.com/grafana/alloy/releases/download/v{{ alloy_download_version }}/alloy-linux-{{ alloy_arch }}.zip"
-    dest: /tmp
-    remote_src: true
-  register: alloy_download
-
-- name: Install Alloy binary
-  copy:
-    src: "/tmp/alloy-linux-{{ alloy_arch }}"
-    dest: "{{ alloy_binary_path }}"
-    mode: "0755"
-    remote_src: true
-  notify: restart alloy
-
-- name: Clean up downloaded archive
-  file:
-    path: "/tmp/alloy-linux-{{ alloy_arch }}"
-    state: absent
+# Installation is now handled by distro-specific tasks using official repos
 
 - name: Generate Alloy configuration
   template:
