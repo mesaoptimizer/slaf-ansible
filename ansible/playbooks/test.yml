@@ -14,3 +14,36 @@
           Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
           IP Address: {{ ansible_default_ipv4.address }}
           Hostname: {{ ansible_hostname }}
+    - name: Test DNS resolution for Loki
+      ansible.builtin.command:
+        cmd: getent hosts loki.home.arpa
+      changed_when: false
+      failed_when: false
+      register: loki_dns
+
+    - name: Fail if Loki DNS resolution failed
+      ansible.builtin.fail:
+        msg: "Failed to resolve loki.home.arpa on {{ inventory_hostname }}"
+      when: loki_dns.rc != 0
+
+    - name: Ping loki.home.arpa
+      ansible.builtin.command:
+        cmd: ping -c 1 loki.home.arpa
+      changed_when: false
+
+    - name: Test DNS resolution for Mimir
+      ansible.builtin.command:
+        cmd: getent hosts mimir.home.arpa
+      changed_when: false
+      failed_when: false
+      register: mimir_dns
+
+    - name: Fail if Mimir DNS resolution failed
+      ansible.builtin.fail:
+        msg: "Failed to resolve mimir.home.arpa on {{ inventory_hostname }}"
+      when: mimir_dns.rc != 0
+
+    - name: Ping mimir.home.arpa
+      ansible.builtin.command:
+        cmd: ping -c 1 mimir.home.arpa
+      changed_when: false
