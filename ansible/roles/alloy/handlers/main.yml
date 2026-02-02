@@ -1,6 +1,10 @@
 ---
 # Handlers for Grafana Alloy role
 
+- name: reload systemd
+  systemd:
+    daemon_reload: true
+
 - name: restart alloy
   service:
     name: alloy
