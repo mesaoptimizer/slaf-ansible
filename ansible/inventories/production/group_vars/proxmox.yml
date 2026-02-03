@@ -32,13 +32,41 @@ alloy_extra_config_blocks:
       forward_to = [loki.process.pve.receiver]
     }
   - |
-    // Proxmox daemon logs from journal
-    loki.source.journal "pve_journal" {
-      matches = "_SYSTEMD_UNIT=pveproxy.service,_SYSTEMD_UNIT=pvedaemon.service,_SYSTEMD_UNIT=pvescheduler.service,_SYSTEMD_UNIT=pve-cluster.service"
+    // Proxmox daemon logs from journal - pveproxy
+    loki.source.journal "pve_proxy" {
+      matches = {
+        "_SYSTEMD_UNIT" = "pveproxy.service",
+      }
       forward_to = [loki.process.pve.receiver]
       labels = {
         job = "proxmox",
-        log_type = "pve_journal",
+        log_type = "pve_proxy",
+        instance = "{{ inventory_hostname }}",
+      }
+    }
+  - |
+    // Proxmox daemon logs from journal - pvedaemon
+    loki.source.journal "pve_daemon" {
+      matches = {
+        "_SYSTEMD_UNIT" = "pvedaemon.service",
+      }
+      forward_to = [loki.process.pve.receiver]
+      labels = {
+        job = "proxmox",
+        log_type = "pve_daemon",
+        instance = "{{ inventory_hostname }}",
+      }
+    }
+  - |
+    // Proxmox daemon logs from journal - pvescheduler
+    loki.source.journal "pve_scheduler" {
+      matches = {
+        "_SYSTEMD_UNIT" = "pvescheduler.service",
+      }
+      forward_to = [loki.process.pve.receiver]
+      labels = {
+        job = "proxmox",
+        log_type = "pve_scheduler",
         instance = "{{ inventory_hostname }}",
       }
     }
