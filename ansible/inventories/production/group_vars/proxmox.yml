@@ -16,20 +16,31 @@ alloy_extra_config_blocks:
       }
     }
   - |
-    // Proxmox VE task logs
-    loki.source.file "pve_tasks" {
+    // Proxmox VE task logs (active tasks)
+    loki.source.file "pve_tasks_active" {
       targets = [
-        {__path__ = "/var/log/pve/tasks/*", log_type = "pve_tasks", instance = "{{ inventory_hostname }}"},
+        {__path__ = "/var/log/pve/tasks/active", log_type = "pve_tasks_active", instance = "{{ inventory_hostname }}"},
       ]
       forward_to = [loki.process.pve.receiver]
     }
   - |
-    // Proxmox VE access logs
-    loki.source.file "pve_access" {
+    // Proxmox VE task index
+    loki.source.file "pve_tasks_index" {
       targets = [
-        {__path__ = "/var/log/pve/access.log", log_type = "pve_access", instance = "{{ inventory_hostname }}"},
+        {__path__ = "/var/log/pve/tasks/index*", log_type = "pve_tasks_index", instance = "{{ inventory_hostname }}"},
       ]
       forward_to = [loki.process.pve.receiver]
+    }
+  - |
+    // Proxmox daemon logs from journal
+    loki.source.journal "pve_journal" {
+      matches = "_SYSTEMD_UNIT=pveproxy.service,_SYSTEMD_UNIT=pvedaemon.service,_SYSTEMD_UNIT=pvescheduler.service,_SYSTEMD_UNIT=pve-cluster.service"
+      forward_to = [loki.process.pve.receiver]
+      labels = {
+        job = "proxmox",
+        log_type = "pve_journal",
+        instance = "{{ inventory_hostname }}",
+      }
     }
   - |
     // Process Proxmox logs
