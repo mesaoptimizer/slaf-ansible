@@ -34,9 +34,7 @@ alloy_extra_config_blocks:
   - |
     // Proxmox daemon logs from journal - pveproxy
     loki.source.journal "pve_proxy" {
-      matches = {
-        "_SYSTEMD_UNIT" = "pveproxy.service",
-      }
+      matches = "_SYSTEMD_UNIT=pveproxy.service"
       forward_to = [loki.process.pve.receiver]
       labels = {
         job = "proxmox",
@@ -47,9 +45,7 @@ alloy_extra_config_blocks:
   - |
     // Proxmox daemon logs from journal - pvedaemon
     loki.source.journal "pve_daemon" {
-      matches = {
-        "_SYSTEMD_UNIT" = "pvedaemon.service",
-      }
+      matches = "_SYSTEMD_UNIT=pvedaemon.service"
       forward_to = [loki.process.pve.receiver]
       labels = {
         job = "proxmox",
@@ -60,9 +56,7 @@ alloy_extra_config_blocks:
   - |
     // Proxmox daemon logs from journal - pvescheduler
     loki.source.journal "pve_scheduler" {
-      matches = {
-        "_SYSTEMD_UNIT" = "pvescheduler.service",
-      }
+      matches = "_SYSTEMD_UNIT=pvescheduler.service"
       forward_to = [loki.process.pve.receiver]
       labels = {
         job = "proxmox",
