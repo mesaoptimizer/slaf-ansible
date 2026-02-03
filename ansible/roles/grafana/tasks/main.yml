@@ -111,7 +111,7 @@
 
     - name: Install Grafana binaries
       copy:
-        src: "/tmp/grafana-v{{ grafana_resolved_version }}/bin/{{ item }}"
+        src: "/tmp/grafana-{{ grafana_resolved_version }}/bin/{{ item }}"
         dest: "{{ grafana_bin_dir }}/{{ item }}"
         mode: "0755"
         remote_src: true
@@ -122,7 +122,7 @@
 
     - name: Install Grafana public directory
       copy:
-        src: "/tmp/grafana-v{{ grafana_resolved_version }}/public/"
+        src: "/tmp/grafana-{{ grafana_resolved_version }}/public/"
         dest: "{{ grafana_data_dir }}/public/"
         owner: "{{ grafana_user }}"
         group: "{{ grafana_group }}"
@@ -132,7 +132,7 @@
 
     - name: Install Grafana conf directory
       copy:
-        src: "/tmp/grafana-v{{ grafana_resolved_version }}/conf/"
+        src: "/tmp/grafana-{{ grafana_resolved_version }}/conf/"
         dest: "{{ grafana_data_dir }}/conf/"
         owner: "{{ grafana_user }}"
         group: "{{ grafana_group }}"
@@ -148,7 +148,7 @@
 
     - name: Clean up extracted directory
       file:
-        path: "/tmp/grafana-v{{ grafana_resolved_version }}"
+        path: "/tmp/grafana-{{ grafana_resolved_version }}"
         state: absent
       when: grafana_download is changed
 
