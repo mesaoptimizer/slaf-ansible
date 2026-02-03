@@ -1,0 +1,40 @@
+---
+- name: Deploy Grafana to lxc-grafana
+  hosts: lxc-grafana
+  become: true
+
+  roles:
+    - common
+    - grafana
+
+  post_tasks:
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "========================================"
+          - "Grafana Deployment Complete"
+          - "========================================"
+          - "Host: {{ inventory_hostname }}"
+          - "Version: {{ grafana_resolved_version }}"
+          - "HTTP Port: {{ grafana_http_port }}"
+          - ""
+          - "Configuration:"
+          - "  Config file: {{ grafana_config_dir }}/grafana.ini"
+          - "  Data directory: {{ grafana_data_dir }}"
+          - "  Log directory: {{ grafana_log_dir }}"
+          - "  Provisioning: {{ grafana_provisioning_dir }}"
+          - ""
+          - "Provisioned Data Sources:"
+          - "{% for ds in grafana_datasources %}  - {{ ds.name }} ({{ ds.type }}): {{ ds.url }}\n{% endfor %}"
+          - ""
+          - "Access Grafana:"
+          - "  URL: http://{{ ansible_host }}:{{ grafana_http_port }}"
+          - ""
+          - "First Login:"
+          - "  Default credentials: admin / admin"
+          - "  You will be prompted to change the password on first login."
+          - ""
+          - "Service Management:"
+          - "  rc-service grafana status"
+          - "  rc-service grafana restart"
+          - "========================================"

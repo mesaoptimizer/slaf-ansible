@@ -1,0 +1,43 @@
+---
+# Grafana default variables
+
+# Version - set to "latest" to always get newest, or pin a specific version
+grafana_version: "latest"
+
+# Network configuration
+grafana_http_port: 3000
+grafana_http_addr: "0.0.0.0"
+
+# Directory paths
+grafana_data_dir: "/var/lib/grafana"
+grafana_config_dir: "/etc/grafana"
+grafana_log_dir: "/var/log/grafana"
+grafana_provisioning_dir: "{{ grafana_config_dir }}/provisioning"
+
+# Binary location
+grafana_bin_dir: "/usr/local/bin"
+
+# User/Group
+grafana_user: "grafana"
+grafana_group: "grafana"
+
+# Logging
+grafana_log_mode: "file"
+grafana_log_level: "info"
+
+# Data sources to provision (Loki and Mimir on internal network)
+grafana_datasources:
+  - name: Mimir
+    type: prometheus
+    url: "http://lxc-mimir.lan.schlaefli.dev:9009/prometheus"
+    is_default: true
+  - name: Loki
+    type: loki
+    url: "http://lxc-loki.lan.schlaefli.dev:3100"
+    is_default: false
+
+# Anonymous access (disabled by default)
+grafana_anonymous_enabled: false
+
+# Allow embedding in iframes
+grafana_allow_embedding: false

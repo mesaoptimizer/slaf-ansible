@@ -1,0 +1,210 @@
+---
+# Grafana installation and configuration tasks for Alpine Linux
+
+- name: Install Grafana dependencies
+  community.general.apk:
+    name:
+      - curl
+      - ca-certificates
+      - bash
+      - musl
+      - fontconfig
+      - freetype
+    state: present
+    update_cache: true
+
+- name: Create Grafana system group
+  group:
+    name: "{{ grafana_group }}"
+    system: true
+    state: present
+
+- name: Create Grafana system user
+  user:
+    name: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    shell: /sbin/nologin
+    home: "{{ grafana_data_dir }}"
+    createhome: false
+    system: true
+    state: present
+
+- name: Create Grafana directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: "0750"
+  loop:
+    - "{{ grafana_data_dir }}"
+    - "{{ grafana_config_dir }}"
+    - "{{ grafana_log_dir }}"
+    - "{{ grafana_provisioning_dir }}"
+    - "{{ grafana_provisioning_dir }}/datasources"
+    - "{{ grafana_provisioning_dir }}/dashboards"
+    - "{{ grafana_provisioning_dir }}/notifiers"
+    - "{{ grafana_provisioning_dir }}/alerting"
+    - "{{ grafana_provisioning_dir }}/plugins"
+
+- name: Download and install Grafana binary
+  block:
+    - name: Get latest Grafana release info
+      uri:
+        url: https://api.github.com/repos/grafana/grafana/releases/latest
+        return_content: true
+        headers:
+          Accept: "application/vnd.github.v3+json"
+      register: grafana_release_info
+      check_mode: false
+      when: grafana_version == "latest"
+
+    - name: Set Grafana version from latest release
+      set_fact:
+        grafana_resolved_version: "{{ grafana_release_info.json.tag_name | regex_replace('^v', '') }}"
+      when: grafana_version == "latest"
+
+    - name: Use specified Grafana version
+      set_fact:
+        grafana_resolved_version: "{{ grafana_version }}"
+      when: grafana_version != "latest"
+
+    - name: Check current Grafana version
+      command: "{{ grafana_bin_dir }}/grafana-server -v"
+      register: grafana_current_version
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Parse current Grafana version
+      set_fact:
+        grafana_installed_version: "{{ grafana_current_version.stdout | regex_search('Version ([0-9.]+)', '\\1') | first | default('none') }}"
+      when: grafana_current_version.rc == 0
+
+    - name: Set installed version to none if not installed
+      set_fact:
+        grafana_installed_version: "none"
+      when: grafana_current_version.rc != 0
+
+    - name: Download Grafana tarball
+      get_url:
+        url: "https://dl.grafana.com/oss/release/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
+        dest: "/tmp/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
+        mode: "0644"
+      when: grafana_installed_version != grafana_resolved_version
+      register: grafana_download
+
+    - name: Extract Grafana tarball
+      unarchive:
+        src: "/tmp/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
+        dest: "/tmp"
+        remote_src: true
+      when: grafana_download is changed
+
+    - name: Stop Grafana service before upgrade
+      service:
+        name: grafana
+        state: stopped
+      when: grafana_download is changed and grafana_installed_version != "none"
+      failed_when: false
+
+    - name: Install Grafana binaries
+      copy:
+        src: "/tmp/grafana-v{{ grafana_resolved_version }}/bin/{{ item }}"
+        dest: "{{ grafana_bin_dir }}/{{ item }}"
+        mode: "0755"
+        remote_src: true
+      loop:
+        - grafana-server
+        - grafana-cli
+      when: grafana_download is changed
+
+    - name: Install Grafana public directory
+      copy:
+        src: "/tmp/grafana-v{{ grafana_resolved_version }}/public/"
+        dest: "{{ grafana_data_dir }}/public/"
+        owner: "{{ grafana_user }}"
+        group: "{{ grafana_group }}"
+        mode: "0755"
+        remote_src: true
+      when: grafana_download is changed
+
+    - name: Install Grafana conf directory
+      copy:
+        src: "/tmp/grafana-v{{ grafana_resolved_version }}/conf/"
+        dest: "{{ grafana_data_dir }}/conf/"
+        owner: "{{ grafana_user }}"
+        group: "{{ grafana_group }}"
+        mode: "0755"
+        remote_src: true
+      when: grafana_download is changed
+
+    - name: Clean up downloaded tarball
+      file:
+        path: "/tmp/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
+        state: absent
+      when: grafana_download is changed
+
+    - name: Clean up extracted directory
+      file:
+        path: "/tmp/grafana-v{{ grafana_resolved_version }}"
+        state: absent
+      when: grafana_download is changed
+
+- name: Generate Grafana configuration
+  template:
+    src: grafana.ini.j2
+    dest: "{{ grafana_config_dir }}/grafana.ini"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: "0640"
+  notify: restart grafana
+
+- name: Generate datasources provisioning configuration
+  template:
+    src: datasources.yml.j2
+    dest: "{{ grafana_provisioning_dir }}/datasources/datasources.yml"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: "0640"
+  notify: restart grafana
+
+- name: Create Grafana log file
+  file:
+    path: "{{ grafana_log_dir }}/grafana.log"
+    state: touch
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: "0644"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Create OpenRC service for Grafana
+  template:
+    src: grafana.service.j2
+    dest: /etc/init.d/grafana
+    mode: "0755"
+  notify: restart grafana
+
+- name: Enable and start Grafana service
+  service:
+    name: grafana
+    state: started
+    enabled: true
+
+- name: Wait for Grafana to be ready
+  wait_for:
+    host: localhost
+    port: "{{ grafana_http_port }}"
+    delay: 2
+    timeout: 60
+
+- name: Check Grafana health endpoint
+  uri:
+    url: "http://localhost:{{ grafana_http_port }}/api/health"
+    method: GET
+    status_code: 200
+  register: grafana_health
+  retries: 10
+  delay: 2
+  until: grafana_health.status == 200

@@ -22,3 +22,17 @@ ansible-playbook playbooks/site.yml
 - Set the working directory to the ansible/ folder
 - Use playbooks/site.yml as the playbook path
 - Inventory defaults to inventories/production/hosts.yml via ansible.cfg
+
+
+## Working and WIP
+
+### Working
+ - bootstrap
+ - test (for testing stuff, may change but in general will never actually DO anything)
+ - configure-vault
+ - garage-s3-setup
+ - loki and associated role
+ - mimir and role
+
+### WIP
+ - alloy
