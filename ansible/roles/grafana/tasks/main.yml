@@ -116,6 +116,7 @@
         mode: "0755"
         remote_src: true
       loop:
+        - grafana
         - grafana-server
         - grafana-cli
       when: grafana_download is changed
