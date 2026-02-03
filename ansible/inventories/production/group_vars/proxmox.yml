@@ -65,6 +65,17 @@ alloy_extra_config_blocks:
       }
     }
   - |
+    // SSH authentication logs (includes root logins)
+    loki.source.journal "ssh_auth" {
+      matches = "_SYSTEMD_UNIT=ssh.service"
+      forward_to = [loki.process.pve.receiver]
+      labels = {
+        job = "proxmox",
+        log_type = "ssh_auth",
+        instance = "{{ inventory_hostname }}",
+      }
+    }
+  - |
     // Process Proxmox logs
     loki.process "pve" {
       forward_to = [loki.write.loki.receiver]
