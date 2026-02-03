@@ -4,6 +4,20 @@
 # Proxmox-specific Alloy config blocks for PVE logs
 alloy_extra_config_blocks:
   - |
+    // Loki write endpoint
+    loki.write "loki" {
+      endpoint {
+        url = "{{ loki_endpoint }}/loki/api/v1/push"
+      }
+      
+      external_labels = {
+        instance = "{{ inventory_hostname }}",
+{% for key, value in alloy_external_labels.items() %}
+        {{ key }} = "{{ value }}",
+{% endfor %}
+      }
+    }
+  - |
     // Proxmox VE task logs
     loki.source.file "pve_tasks" {
       targets = [
