@@ -33,9 +33,10 @@
     headers:
       Content-Type: "application/yaml"
       X-Scope-OrgID: "anonymous"
-    body: "{{ lookup('file', item.path) }}"
-    body_format: raw
+    src: "{{ item.path }}"
     status_code: [200, 202]
+  delegate_to: localhost
+  become: false
   loop: "{{ mimir_all_rule_files }}"
   loop_control:
     label: "{{ item.path | basename }}"
