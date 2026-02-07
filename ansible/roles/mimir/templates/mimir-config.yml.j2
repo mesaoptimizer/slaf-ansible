@@ -15,11 +15,10 @@ common:
       access_key_id: "{{ mimir_s3_access_key }}"
       secret_access_key: "{{ mimir_s3_secret_key }}"
       insecure: {{ s3_insecure | default(false) | lower }}
-      {% if s3_skip_verify | default(false) %}
-      # For self-signed certs with Garage
+{%- if s3_skip_verify | default(false) %}
       http:
         insecure_skip_verify: {{ s3_skip_verify | lower }}
-      {% endif %}
+{%- endif %}
 
 blocks_storage:
   tsdb:
@@ -69,17 +68,6 @@ ruler:
 
 ruler_storage:
   backend: s3
-  s3:
-    bucket_name: "{{ mimir_s3_bucket }}"
-    endpoint: "{{ s3_endpoint }}"
-    region: "{{ s3_region }}"
-    access_key_id: "{{ mimir_s3_access_key }}"
-    secret_access_key: "{{ mimir_s3_secret_key }}"
-    insecure: {{ s3_insecure | default(false) | lower }}
-    {% if s3_skip_verify | default(false) %}
-    http:
-      insecure_skip_verify: {{ s3_skip_verify | lower }}
-    {% endif %}
 
 alertmanager_storage:
   backend: local
