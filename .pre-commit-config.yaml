@@ -35,9 +35,9 @@ repos:
         files: "ansible/roles/mimir/files/rules/.*\\.yml$"
         types: [yaml]
 
-      - id: mimirtool-check-loki-rules
-        name: Validate Loki rules (mimirtool --backend=loki)
+      - id: lokitool-check-loki-rules
+        name: Validate Loki rules (lokitool)
         language: system
-        entry: bash -c 'for f in "$@"; do mimirtool rules check --backend=loki "$f" || exit 1; done' --
+        entry: bash -c 'for f in "$@"; do lokitool rules check "$f" || exit 1; done' --
         files: "ansible/roles/loki/files/rules/.*\\.yml$"
         types: [yaml]

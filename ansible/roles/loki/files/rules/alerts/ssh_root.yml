@@ -1,6 +1,6 @@
 ---
 # Loki alerting rules for SSH root access
-# Validated by mimirtool --backend=loki in pre-commit
+# Validated by lokitool in pre-commit
 
 groups:
   - name: ssh_alerts

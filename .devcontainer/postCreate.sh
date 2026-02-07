@@ -32,6 +32,16 @@ sudo mv "$TMPFILE" /usr/local/bin/mimirtool
 sudo chmod +x /usr/local/bin/mimirtool
 echo "    mimirtool version: $(mimirtool version 2>/dev/null || echo 'installed')"
 
+echo "==> Installing lokitool..."
+TMPFILE=$(mktemp -d)
+curl -fSL -o "$TMPFILE/lokitool.zip" \
+  "https://github.com/grafana/loki/releases/latest/download/lokitool-linux-amd64.zip"
+unzip -o "$TMPFILE/lokitool.zip" -d "$TMPFILE"
+sudo mv "$TMPFILE/lokitool-linux-amd64" /usr/local/bin/lokitool
+sudo chmod +x /usr/local/bin/lokitool
+rm -rf "$TMPFILE"
+echo "    lokitool version: $(lokitool version 2>/dev/null || echo 'installed')"
+
 echo "==> Setting up pre-commit hooks..."
 pre-commit install
 
