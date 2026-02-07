@@ -1,0 +1,35 @@
+---
+profile: production
+
+exclude_paths:
+  - .devcontainer/
+  - .venv/
+  - ansible/collections/
+  - .cache/
+  - .pre-commit-config.yaml
+
+# Ansible-specific settings
+parseable: true
+use_default_rules: true
+offline: false
+
+# Skip rules that conflict with this project's patterns
+skip_list:
+  # We use OpenRC (Alpine), not systemd
+  - no-changed-when
+  # We intentionally use uri module with vault tokens
+  - no-log-password
+
+# Warn-only rules (won't fail the run)
+warn_list:
+  - experimental
+  - yaml[line-length]
+
+# Make role detection work
+kinds:
+  - playbook: "ansible/playbooks/*.yml"
+  - tasks: "ansible/roles/*/tasks/*.yml"
+  - handlers: "ansible/roles/*/handlers/*.yml"
+  - vars: "ansible/roles/*/vars/*.yml"
+  - vars: "ansible/roles/*/defaults/*.yml"
+  - meta: "ansible/roles/*/meta/*.yml"

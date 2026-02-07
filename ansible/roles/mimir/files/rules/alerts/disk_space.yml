@@ -1,0 +1,36 @@
+---
+# Mimir alerting rules for disk space
+# Validated by mimirtool in pre-commit
+
+groups:
+  - name: disk_space_alerts
+    rules:
+      - alert: DiskSpaceLowWarning
+        expr: |
+          node:disk_free_percent < 15
+          and
+          node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} < 7.5 * 1024 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+          description: >-
+            Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }}
+            has {{ printf "%.1f" $value }}% free space remaining
+            and less than 7.5GB available.
+
+      - alert: DiskSpaceLowCritical
+        expr: |
+          node:disk_free_percent < 10
+          and
+          node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"} < 5 * 1024 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space critically low on {{ $labels.instance }} ({{ $labels.mountpoint }})"
+          description: >-
+            Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }}
+            has {{ printf "%.1f" $value }}% free space remaining
+            and less than 5GB available. Immediate action required.

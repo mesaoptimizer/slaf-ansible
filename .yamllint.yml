@@ -1,0 +1,29 @@
+---
+extends: default
+
+ignore:
+  - ansible/collections/
+  - .devcontainer/
+  - .venv/
+
+rules:
+  line-length:
+    max: 200
+    allow-non-breakable-inline-mappings: true
+  truthy:
+    allowed-values:
+      - "true"
+      - "false"
+      - "yes"
+      - "no"
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: false
+  indentation:
+    spaces: 2
+    indent-sequences: true

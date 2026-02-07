@@ -1,0 +1,11 @@
+---
+- name: Deploy Mimir rules only
+  hosts: lxc-mimir
+  become: false
+  gather_facts: false
+
+  tasks:
+    - name: Deploy Mimir rules via API
+      include_role:
+        name: mimir
+        tasks_from: deploy-rules

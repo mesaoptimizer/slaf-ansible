@@ -1,0 +1,37 @@
+{
+  "name": "SLAF Ansible + Observability Rules",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.ansible",
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "GitHub.copilot"
+      ],
+      "settings": {
+        "ansible.python.interpreterPath": "/usr/local/bin/python",
+        "ansible.validation.lint.enabled": true,
+        "ansible.validation.lint.path": "ansible-lint",
+        "yaml.validate": true,
+        "files.associations": {
+          "ansible/playbooks/*.yml": "ansible",
+          "ansible/roles/*/tasks/*.yml": "ansible",
+          "ansible/roles/*/handlers/*.yml": "ansible",
+          "ansible/roles/*/defaults/*.yml": "ansible",
+          "ansible/roles/*/vars/*.yml": "ansible",
+          "ansible/inventories/**/*.yml": "yaml"
+        },
+        "editor.formatOnSave": true,
+        "[yaml]": {
+          "editor.defaultFormatter": "redhat.vscode-yaml"
+        }
+      }
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  }
+}

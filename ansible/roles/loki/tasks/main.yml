@@ -212,3 +212,9 @@
       - "Data directory: /var/lib/loki"
       - "HTTP endpoint: http://localhost:{{ loki_http_port }}"
       - "Metrics endpoint: http://localhost:{{ loki_http_port }}/metrics"
+
+- name: Deploy Loki rules
+  include_tasks: deploy-rules.yml
+  tags:
+    - loki-rules
+    - rules

@@ -1,0 +1,44 @@
+---
+# Deploy Loki rules via the Loki ruler API
+# Can be included from the main role or run standalone via the rules playbook
+#
+# Loki ruler API: POST /loki/api/v1/rules/{namespace}
+# Body: YAML rule group file
+# Header: X-Scope-OrgID (use "fake" since auth_enabled is false)
+
+- name: Find all Loki alert rule files
+  find:
+    paths: "{{ role_path }}/files/rules/alerts"
+    patterns: "*.yml"
+  delegate_to: localhost
+  become: false
+  register: loki_alert_rule_files
+
+- name: Push Loki rules via ruler API
+  uri:
+    url: "http://{{ ansible_host }}:{{ loki_http_port }}/loki/api/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
+    method: POST
+    headers:
+      Content-Type: "application/yaml"
+      X-Scope-OrgID: "fake"
+    body: "{{ lookup('file', item.path) }}"
+    status_code: [200, 202]
+  loop: "{{ loki_alert_rule_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: loki_alert_rule_files.files | length > 0
+
+- name: Verify Loki rules were loaded
+  uri:
+    url: "http://{{ ansible_host }}:{{ loki_http_port }}/loki/api/v1/rules"
+    method: GET
+    headers:
+      X-Scope-OrgID: "fake"
+    return_content: true
+    status_code: 200
+  register: loki_rules_check
+
+- name: Display loaded Loki rule groups
+  debug:
+    msg: "Loki rules loaded: {{ loki_rules_check.json.data.groups | default([]) | map(attribute='name') | list }}"
+  when: loki_rules_check.json.data.groups is defined

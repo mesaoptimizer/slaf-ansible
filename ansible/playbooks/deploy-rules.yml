@@ -1,0 +1,9 @@
+---
+# Deploy all observability rules (Mimir + Loki) via their APIs
+# Usage: ansible-playbook ansible/playbooks/deploy-rules.yml
+
+- name: Import Mimir rules deployment
+  import_playbook: mimir-rules.yml
+
+- name: Import Loki rules deployment
+  import_playbook: loki-rules.yml

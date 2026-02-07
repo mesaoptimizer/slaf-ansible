@@ -181,3 +181,9 @@
       - "Data directory: /var/lib/mimir"
       - "HTTP endpoint: http://localhost:{{ mimir_http_port }}"
       - "Metrics endpoint: http://localhost:{{ mimir_http_port }}/metrics"
+
+- name: Deploy Mimir rules
+  include_tasks: deploy-rules.yml
+  tags:
+    - mimir-rules
+    - rules

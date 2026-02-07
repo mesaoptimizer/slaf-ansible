@@ -1,0 +1,18 @@
+---
+# Loki alerting rules for SSH root access
+# Validated by mimirtool --backend=loki in pre-commit
+
+groups:
+  - name: ssh_alerts
+    rules:
+      - alert: RootSSHLogin
+        expr: |
+          count_over_time({job=~".*sshd.*|.*ssh.*"} |~ "Accepted .+ for root" [5m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root SSH login detected on {{ $labels.host }}"
+          description: >-
+            A root SSH login was detected in the SSH logs on {{ $labels.host }}.
+            This may indicate unauthorized access. Review SSH logs immediately.

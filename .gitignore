@@ -1,0 +1,23 @@
+# Ansible
+*.retry
+ansible/collections/ansible_collections/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Pre-commit / lint caches
+.cache/
+.ansible-lint-cache/
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db

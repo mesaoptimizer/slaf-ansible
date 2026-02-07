@@ -1,0 +1,11 @@
+---
+- name: Deploy Loki rules only
+  hosts: lxc-loki
+  become: false
+  gather_facts: false
+
+  tasks:
+    - name: Deploy Loki rules via API
+      include_role:
+        name: loki
+        tasks_from: deploy-rules
