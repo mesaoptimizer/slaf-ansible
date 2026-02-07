@@ -2,13 +2,13 @@
 # Main tasks for Grafana Alloy role
 
 - name: Create Alloy group
-  group:
+  ansible.builtin.group:
     name: "{{ alloy_group }}"
     system: true
     state: present
 
 - name: Create Alloy user
-  user:
+  ansible.builtin.user:
     name: "{{ alloy_user }}"
     group: "{{ alloy_group }}"
     system: true
@@ -18,7 +18,7 @@
     state: present
 
 - name: Create Alloy directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: "{{ alloy_user }}"
@@ -31,7 +31,7 @@
 # Installation is now handled by distro-specific tasks using official repos
 
 - name: Generate Alloy configuration
-  template:
+  ansible.builtin.template:
     src: alloy-config.alloy.j2
     dest: "{{ alloy_config_file }}"
     owner: "{{ alloy_user }}"
@@ -41,28 +41,28 @@
 
 # Include distro-specific tasks for service installation
 - name: Include Debian/Ubuntu specific tasks
-  include_tasks: install-debian.yml
+  ansible.builtin.include_tasks: install-debian.yml
   when: ansible_os_family == 'Debian'
 
 - name: Include Alpine specific tasks
-  include_tasks: install-alpine.yml
+  ansible.builtin.include_tasks: install-alpine.yml
   when: ansible_os_family == 'Alpine'
 
 - name: Enable and start Alloy service
-  service:
+  ansible.builtin.service:
     name: alloy
     state: started
     enabled: true
 
 - name: Wait 30 seconds for service to stabilize
-  pause:
+  ansible.builtin.pause:
     seconds: 30
 
 - name: Check that Alloy service is still running
-  service_facts:
+  ansible.builtin.service_facts:
 
 - name: Verify Alloy service is active
-  assert:
+  ansible.builtin.assert:
     that:
       - ansible_facts.services['alloy.service'] is defined
       - ansible_facts.services['alloy.service'].state == 'running'

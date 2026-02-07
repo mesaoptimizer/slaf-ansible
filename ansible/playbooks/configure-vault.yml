@@ -15,20 +15,20 @@
 
   tasks:
     - name: Verify app_name is set
-      assert:
+      ansible.builtin.assert:
         that:
           - app_name is defined
           - app_name | trim | length > 0
         fail_msg: "app_name must be set via survey"
 
     - name: Verify Vault token is set
-      assert:
+      ansible.builtin.assert:
         that:
           - vault_token | length > 0
         fail_msg: "vault_token must be set via survey or VAULT_TOKEN env var"
 
     - name: Check enabled auth methods
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/sys/auth"
         method: GET
         headers:
@@ -38,7 +38,7 @@
       register: auth_methods_result
 
     - name: Enable AppRole auth method
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/sys/auth/approle"
         method: POST
         headers:
@@ -51,8 +51,8 @@
         validate_certs: false
       when: "'approle/' not in (auth_methods_result.json.data | default({}))"
 
-    - name: "Create {{ app_role_name }} AppRole"
-      uri:
+    - name: "Create  AppRole {{ app_role_name }}"
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}"
         method: POST
         headers:
@@ -70,8 +70,8 @@
         validate_certs: false
       register: approle_create_result
 
-    - name: "Create {{ app_policy_name }} policy"
-      uri:
+    - name: "Create policy {{ app_policy_name }}"
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/sys/policies/acl/{{ app_policy_name }}"
         method: POST
         headers:
@@ -88,8 +88,8 @@
         status_code: [200, 204]
         validate_certs: false
 
-    - name: "Get {{ app_role_name }} Role ID"
-      uri:
+    - name: "Get role id {{ app_role_name }}"
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/role-id"
         method: GET
         headers:
@@ -99,7 +99,7 @@
       register: role_id_result
 
     - name: Check stored Secret ID in Vault
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/{{ secret_id_storage_path }}"
         method: GET
         headers:
@@ -110,15 +110,15 @@
       when: store_secret_id_in_vault | bool
 
     - name: Set existing Secret ID fact
-      set_fact:
+      ansible.builtin.set_fact:
         existing_secret_id: "{{ stored_secret_result.json.data.data.secret_id }}"
       when:
         - store_secret_id_in_vault | bool
         - stored_secret_result.status == 200
         - stored_secret_result.json.data.data.secret_id is defined
 
-    - name: "Generate {{ app_role_name }} Secret ID"
-      uri:
+    - name: "Generate Secred ID{{ app_role_name }}"
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}/secret-id"
         method: POST
         headers:
@@ -133,17 +133,17 @@
         - existing_secret_id is not defined
 
     - name: Set Secret ID value from Vault
-      set_fact:
+      ansible.builtin.set_fact:
         secret_id_value: "{{ existing_secret_id }}"
       when: existing_secret_id is defined
 
     - name: Set Secret ID value from generation
-      set_fact:
+      ansible.builtin.set_fact:
         secret_id_value: "{{ secret_id_result.json.data.secret_id }}"
       when: secret_id_result.json.data.secret_id is defined
 
     - name: Store Secret ID in Vault
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/{{ secret_id_storage_path }}"
         method: POST
         headers:
@@ -160,7 +160,7 @@
         - secret_id_result.json.data.secret_id is defined
 
     - name: "Display AppRole configuration for {{ app_name }}"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "AppRole successfully configured in Vault for {{ app_name }}"
           - "AppRole: {{ app_role_name }}"
@@ -174,8 +174,8 @@
           - "Deployment playbooks (loki.yml, mimir.yml, etc.) will retrieve"
           - "credentials from Vault using the AppRole authentication method."
 
-    - name: "Verify {{ app_role_name }} AppRole setup"
-      uri:
+    - name: "Verify Approle setup {{ app_role_name }}"
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/auth/approle/role/{{ app_role_name }}"
         method: GET
         headers:
@@ -185,6 +185,6 @@
       register: approle_verify_result
 
     - name: Display AppRole configuration
-      debug:
+      ansible.builtin.debug:
         var: approle_verify_result.json.data
       when: approle_verify_result.json is defined

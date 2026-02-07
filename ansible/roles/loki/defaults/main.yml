@@ -18,12 +18,12 @@ loki_retention_hours: 168
 
 # S3/Garage bucket configuration
 # These should be overridden in group_vars or inventory
-s3_endpoint: "http://nas1.lan.schlaefli.dev:3900"
-s3_region: "garage"
-s3_insecure: false
-s3_skip_verify: false
+loki_s3_endpoint: "http://nas1.lan.schlaefli.dev:3900"
+loki_s3_region: "garage"
+loki_s3_insecure: false
+loki_s3_skip_verify: false
 loki_s3_force_path_style: true
 
 # Vault configuration
-vault_addr: "https://vault.lan.schlaefli.dev"
-vault_skip_verify: false
+loki_vault_addr: "https://vault.lan.schlaefli.dev"
+loki_vault_skip_verify: false

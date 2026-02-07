@@ -6,10 +6,10 @@
     - name: vault_token
       prompt: "Vault admin token (for retrieving AppRole credentials)"
       private: true
-  vars:
-    # Override defaults from group_vars/monitoring.yml if needed
-    # s3_endpoint: "https://garage.example.com:3900"
-    # loki_s3_bucket: "loki"
+  vars: {}
+  # Override defaults from group_vars/monitoring.yml if needed
+  # s3_endpoint: "https://garage.example.com:3900"
+  # loki_s3_bucket: "loki"
 
   roles:
     - common
@@ -17,7 +17,7 @@
 
   post_tasks:
     - name: Display Loki deployment summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "============================================"
           - "Loki deployment completed successfully"

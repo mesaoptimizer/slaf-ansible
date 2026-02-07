@@ -15,13 +15,13 @@
     update_cache: true
 
 - name: Create Grafana system group
-  group:
+  ansible.builtin.group:
     name: "{{ grafana_group }}"
     system: true
     state: present
 
 - name: Create Grafana system user
-  user:
+  ansible.builtin.user:
     name: "{{ grafana_user }}"
     group: "{{ grafana_group }}"
     shell: /sbin/nologin
@@ -31,7 +31,7 @@
     state: present
 
 - name: Create Grafana directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: "{{ grafana_user }}"
@@ -51,7 +51,7 @@
 - name: Download and install Grafana binary
   block:
     - name: Get latest Grafana release info
-      uri:
+      ansible.builtin.uri:
         url: https://api.github.com/repos/grafana/grafana/releases/latest
         return_content: true
         headers:
@@ -61,34 +61,34 @@
       when: grafana_version == "latest"
 
     - name: Set Grafana version from latest release
-      set_fact:
+      ansible.builtin.set_fact:
         grafana_resolved_version: "{{ grafana_release_info.json.tag_name | regex_replace('^v', '') }}"
       when: grafana_version == "latest"
 
     - name: Use specified Grafana version
-      set_fact:
+      ansible.builtin.set_fact:
         grafana_resolved_version: "{{ grafana_version }}"
       when: grafana_version != "latest"
 
     - name: Check current Grafana version
-      command: "{{ grafana_bin_dir }}/grafana-server -v"
+      ansible.builtin.command: "{{ grafana_bin_dir }}/grafana-server -v"
       register: grafana_current_version
       changed_when: false
       failed_when: false
       check_mode: false
 
     - name: Parse current Grafana version
-      set_fact:
+      ansible.builtin.set_fact:
         grafana_installed_version: "{{ grafana_current_version.stdout | regex_search('Version ([0-9.]+)', '\\1') | first | default('none') }}"
       when: grafana_current_version.rc == 0
 
     - name: Set installed version to none if not installed
-      set_fact:
+      ansible.builtin.set_fact:
         grafana_installed_version: "none"
       when: grafana_current_version.rc != 0
 
     - name: Download Grafana tarball
-      get_url:
+      ansible.builtin.get_url:
         url: "https://dl.grafana.com/oss/release/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
         dest: "/tmp/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
         mode: "0644"
@@ -96,21 +96,21 @@
       register: grafana_download
 
     - name: Extract Grafana tarball
-      unarchive:
+      ansible.builtin.unarchive:
         src: "/tmp/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
         dest: "/tmp"
         remote_src: true
-      when: grafana_download is changed
+      when: grafana_download is defined and grafana_download.changed
 
     - name: Stop Grafana service before upgrade
-      service:
+      ansible.builtin.service:
         name: grafana
         state: stopped
-      when: grafana_download is changed and grafana_installed_version != "none"
+      when: grafana_download is defined and grafana_download.changed and grafana_installed_version != "none"
       failed_when: false
 
     - name: Install Grafana binaries
-      copy:
+      ansible.builtin.copy:
         src: "/tmp/grafana-{{ grafana_resolved_version }}/bin/{{ item }}"
         dest: "{{ grafana_bin_dir }}/{{ item }}"
         mode: "0755"
@@ -119,42 +119,42 @@
         - grafana
         - grafana-server
         - grafana-cli
-      when: grafana_download is changed
+      when: grafana_download is defined and grafana_download.changed
 
     - name: Install Grafana public directory
-      copy:
+      ansible.builtin.copy:
         src: "/tmp/grafana-{{ grafana_resolved_version }}/public/"
         dest: "{{ grafana_data_dir }}/public/"
         owner: "{{ grafana_user }}"
         group: "{{ grafana_group }}"
         mode: "0755"
         remote_src: true
-      when: grafana_download is changed
+      when: grafana_download is defined and grafana_download.changed
 
     - name: Install Grafana conf directory
-      copy:
+      ansible.builtin.copy:
         src: "/tmp/grafana-{{ grafana_resolved_version }}/conf/"
         dest: "{{ grafana_data_dir }}/conf/"
         owner: "{{ grafana_user }}"
         group: "{{ grafana_group }}"
         mode: "0755"
         remote_src: true
-      when: grafana_download is changed
+      when: grafana_download is defined and grafana_download.changed
 
     - name: Clean up downloaded tarball
-      file:
+      ansible.builtin.file:
         path: "/tmp/grafana-{{ grafana_resolved_version }}.linux-amd64.tar.gz"
         state: absent
-      when: grafana_download is changed
+      when: grafana_download is defined and grafana_download.changed
 
     - name: Clean up extracted directory
-      file:
+      ansible.builtin.file:
         path: "/tmp/grafana-{{ grafana_resolved_version }}"
         state: absent
-      when: grafana_download is changed
+      when: grafana_download is defined and grafana_download.changed
 
 - name: Generate Grafana configuration
-  template:
+  ansible.builtin.template:
     src: grafana.ini.j2
     dest: "{{ grafana_config_dir }}/grafana.ini"
     owner: "{{ grafana_user }}"
@@ -163,7 +163,7 @@
   notify: restart grafana
 
 - name: Generate datasources provisioning configuration
-  template:
+  ansible.builtin.template:
     src: datasources.yml.j2
     dest: "{{ grafana_provisioning_dir }}/datasources/datasources.yml"
     owner: "{{ grafana_user }}"
@@ -172,7 +172,7 @@
   notify: restart grafana
 
 - name: Create Grafana log file
-  file:
+  ansible.builtin.file:
     path: "{{ grafana_log_dir }}/grafana.log"
     state: touch
     owner: "{{ grafana_user }}"
@@ -182,27 +182,27 @@
     access_time: preserve
 
 - name: Create OpenRC service for Grafana
-  template:
+  ansible.builtin.template:
     src: grafana.service.j2
     dest: /etc/init.d/grafana
     mode: "0755"
   notify: restart grafana
 
 - name: Enable and start Grafana service
-  service:
+  ansible.builtin.service:
     name: grafana
     state: started
     enabled: true
 
 - name: Wait for Grafana to be ready
-  wait_for:
+  ansible.builtin.wait_for:
     host: localhost
     port: "{{ grafana_http_port }}"
     delay: 2
     timeout: 60
 
 - name: Check Grafana health endpoint
-  uri:
+  ansible.builtin.uri:
     url: "http://localhost:{{ grafana_http_port }}/api/health"
     method: GET
     status_code: 200

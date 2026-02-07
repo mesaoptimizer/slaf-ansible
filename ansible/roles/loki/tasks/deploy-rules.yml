@@ -7,7 +7,7 @@
 # Header: X-Scope-OrgID (use "fake" since auth_enabled is false)
 
 - name: Find all Loki alert rule files
-  find:
+  ansible.builtin.find:
     paths: "{{ role_path }}/files/rules/alerts"
     patterns: "*.yml"
   delegate_to: localhost
@@ -15,7 +15,7 @@
   register: loki_alert_rule_files
 
 - name: Push Loki rules via ruler API
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_host }}:{{ loki_http_port }}/loki/api/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
     method: POST
     headers:
@@ -29,7 +29,7 @@
   when: loki_alert_rule_files.files | length > 0
 
 - name: Verify Loki rules were loaded
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_host }}:{{ loki_http_port }}/loki/api/v1/rules"
     method: GET
     headers:
@@ -39,6 +39,6 @@
   register: loki_rules_check
 
 - name: Display loaded Loki rule groups
-  debug:
+  ansible.builtin.debug:
     msg: "Loki rules loaded: {{ loki_rules_check.json.data.groups | default([]) | map(attribute='name') | list }}"
   when: loki_rules_check.json.data.groups is defined

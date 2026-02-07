@@ -6,6 +6,6 @@
 
   tasks:
     - name: Deploy Mimir rules via API
-      include_role:
+      ansible.builtin.include_role:
         name: mimir
         tasks_from: deploy-rules

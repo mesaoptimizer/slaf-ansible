@@ -10,7 +10,7 @@
 
   post_tasks:
     - name: Display deployment summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=========================================="
           - "Alloy Deployment Complete"
@@ -19,6 +19,6 @@
           - "OS Family: {{ ansible_os_family }}"
           - "Config: {{ alloy_config_file }}"
           - "HTTP Port: {{ alloy_http_port }}"
-          - "Mimir Endpoint: {{ mimir_endpoint }}"
-          - "Loki Endpoint: {{ loki_endpoint }}"
+          - "Mimir Endpoint: {{ alloy_mimir_endpoint }}"
+          - "Loki Endpoint: {{ alloy_loki_endpoint }}"
           - "=========================================="

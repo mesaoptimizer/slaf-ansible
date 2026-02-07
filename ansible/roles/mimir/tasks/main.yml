@@ -1,6 +1,6 @@
 ---
 - name: Install Mimir dependencies
-  apk:
+  community.general.apk:
     name:
       - curl
       - ca-certificates
@@ -9,13 +9,13 @@
     update_cache: true
 
 - name: Create mimir system group
-  group:
+  ansible.builtin.group:
     name: mimir
     system: true
     state: present
 
 - name: Create mimir system user
-  user:
+  ansible.builtin.user:
     name: mimir
     group: mimir
     shell: /sbin/nologin
@@ -25,7 +25,7 @@
     state: present
 
 - name: Create mimir directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: mimir
@@ -45,18 +45,18 @@
 - name: Download Mimir binary
   block:
     - name: Get latest Mimir release
-      uri:
+      ansible.builtin.uri:
         url: https://api.github.com/repos/grafana/mimir/releases/latest
         return_content: true
       register: mimir_release
       check_mode: false
 
     - name: Extract download URL for Linux amd64
-      set_fact:
+      ansible.builtin.set_fact:
         mimir_download_url: "{{ mimir_release.json.assets | selectattr('name', 'match', 'mimir-linux-amd64') | map(attribute='browser_download_url') | first }}"
 
     - name: Download Mimir binary
-      get_url:
+      ansible.builtin.get_url:
         url: "{{ mimir_download_url }}"
         dest: /usr/local/bin/mimir
         mode: "0755"
@@ -67,27 +67,27 @@
 - name: Retrieve AppRole credentials from Vault
   block:
     - name: Get AppRole credentials from Vault for mimir
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/secret/data/approle/mimir"
         method: GET
         headers:
           X-Vault-Token: "{{ vault_token }}"
         status_code: 200
         validate_certs: false
-      register: approle_credentials_result
+      register: mimir_approle_credentials_result
       check_mode: false
 
     - name: Set AppRole credentials from Vault
-      set_fact:
-        mimir_vault_role_id: "{{ approle_credentials_result.json.data.data.role_id }}"
-        mimir_vault_secret_id: "{{ approle_credentials_result.json.data.data.secret_id }}"
+      ansible.builtin.set_fact:
+        mimir_vault_role_id: "{{ mimir_approle_credentials_result.json.data.data.role_id }}"
+        mimir_vault_secret_id: "{{ mimir_approle_credentials_result.json.data.data.secret_id }}"
         cacheable: true
-      when: approle_credentials_result.json.data.data.role_id is defined
+      when: mimir_approle_credentials_result.json.data.data.role_id is defined
 
 - name: Retrieve S3 credentials from Vault using AppRole
   block:
     - name: Authenticate with Vault using AppRole
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/auth/approle/login"
         method: POST
         body_format: json
@@ -96,29 +96,29 @@
           secret_id: "{{ mimir_vault_secret_id }}"
         status_code: 200
         validate_certs: false
-      register: vault_auth_result
+      register: mimir_vault_auth_result
       check_mode: false
 
     - name: Retrieve S3 credentials from Vault
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/secret/data/garage/mimir/credentials"
         method: GET
         headers:
-          X-Vault-Token: "{{ vault_auth_result.json.auth.client_token }}"
+          X-Vault-Token: "{{ mimir_vault_auth_result.json.auth.client_token }}"
         status_code: 200
         validate_certs: false
-      register: s3_credentials_result
+      register: mimir_s3_credentials_result
       check_mode: false
 
     - name: Set S3 credentials fact
-      set_fact:
-        mimir_s3_access_key: "{{ s3_credentials_result.json.data.data.access_key_id }}"
-        mimir_s3_secret_key: "{{ s3_credentials_result.json.data.data.secret_access_key }}"
-        mimir_s3_bucket: "{{ s3_credentials_result.json.data.data.bucket_name | default('mimir') }}"
+      ansible.builtin.set_fact:
+        mimir_s3_access_key: "{{ mimir_s3_credentials_result.json.data.data.access_key_id }}"
+        mimir_s3_secret_key: "{{ mimir_s3_credentials_result.json.data.data.secret_access_key }}"
+        mimir_s3_bucket: "{{ mimir_s3_credentials_result.json.data.data.bucket_name | default('mimir') }}"
         cacheable: true
 
 - name: Generate Mimir configuration
-  template:
+  ansible.builtin.template:
     src: mimir-config.yml.j2
     dest: /etc/mimir/mimir-config.yml
     owner: mimir
@@ -127,7 +127,7 @@
   notify: restart mimir
 
 - name: Create mimir log file
-  file:
+  ansible.builtin.file:
     path: /var/log/mimir.log
     state: touch
     owner: mimir
@@ -137,20 +137,20 @@
     access_time: preserve
 
 - name: Create Mimir systemd service
-  template:
+  ansible.builtin.template:
     src: mimir.service.j2
     dest: /etc/init.d/mimir
     mode: "0755"
   notify: restart mimir
 
 - name: Enable and start Mimir service
-  service:
+  ansible.builtin.service:
     name: mimir
     state: started
     enabled: true
 
 - name: Wait for Mimir to be ready
-  wait_for:
+  ansible.builtin.wait_for:
     host: localhost
     port: "{{ mimir_http_port }}"
     delay: 2
@@ -158,7 +158,7 @@
     state: started
 
 - name: Check Mimir ready endpoint
-  uri:
+  ansible.builtin.uri:
     url: "http://localhost:{{ mimir_http_port }}/ready"
     method: GET
     status_code: 200
@@ -168,13 +168,13 @@
   until: mimir_ready_result.status == 200
 
 - name: Verify Mimir is running
-  command: /usr/bin/pgrep -f mimir
+  ansible.builtin.command: /usr/bin/pgrep -f mimir
   register: mimir_process
   changed_when: false
   failed_when: mimir_process.rc != 0
 
 - name: Display Mimir status
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Mimir successfully deployed to {{ inventory_hostname }}"
       - "Configuration: /etc/mimir/mimir-config.yml"
@@ -183,7 +183,7 @@
       - "Metrics endpoint: http://localhost:{{ mimir_http_port }}/metrics"
 
 - name: Deploy Mimir rules
-  include_tasks: deploy-rules.yml
+  ansible.builtin.include_tasks: deploy-rules.yml
   tags:
     - mimir-rules
     - rules

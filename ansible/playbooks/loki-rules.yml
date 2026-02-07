@@ -6,6 +6,6 @@
 
   tasks:
     - name: Deploy Loki rules via API
-      include_role:
+      ansible.builtin.include_role:
         name: loki
         tasks_from: deploy-rules

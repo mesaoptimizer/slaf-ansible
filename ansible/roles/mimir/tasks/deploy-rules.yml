@@ -7,7 +7,7 @@
 # Header: X-Scope-OrgID (use "anonymous" since multitenancy is disabled)
 
 - name: Find all Mimir alert rule files
-  find:
+  ansible.builtin.find:
     paths: "{{ role_path }}/files/rules/alerts"
     patterns: "*.yml"
   delegate_to: localhost
@@ -15,7 +15,7 @@
   register: mimir_alert_rule_files
 
 - name: Find all Mimir recording rule files
-  find:
+  ansible.builtin.find:
     paths: "{{ role_path }}/files/rules/recording"
     patterns: "*.yml"
   delegate_to: localhost
@@ -23,11 +23,11 @@
   register: mimir_recording_rule_files
 
 - name: Set combined rule files list
-  set_fact:
+  ansible.builtin.set_fact:
     mimir_all_rule_files: "{{ mimir_alert_rule_files.files + mimir_recording_rule_files.files }}"
 
 - name: Push Mimir rules via ruler API
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_host }}:{{ mimir_http_port }}/api/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
     method: POST
     headers:
@@ -41,7 +41,7 @@
   when: mimir_all_rule_files | length > 0
 
 - name: Verify Mimir rules were loaded
-  uri:
+  ansible.builtin.uri:
     url: "http://{{ ansible_host }}:{{ mimir_http_port }}/api/v1/rules"
     method: GET
     headers:
@@ -51,6 +51,6 @@
   register: mimir_rules_check
 
 - name: Display loaded Mimir rule groups
-  debug:
+  ansible.builtin.debug:
     msg: "Mimir rules loaded: {{ mimir_rules_check.json.data.groups | default([]) | map(attribute='name') | list }}"
   when: mimir_rules_check.json.data.groups is defined

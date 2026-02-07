@@ -20,15 +20,14 @@ repos:
         types: [yaml]
         exclude: "ansible/collections/|templates/.*\\.j2$"
 
-  - repo: https://github.com/ansible/ansible-lint
-    rev: v25.1.2
-    hooks:
-      - id: ansible-lint
-        files: "ansible/"
-        exclude: "ansible/collections/"
-
   - repo: local
     hooks:
+      - id: ansible-lint-system
+        name: ansible-lint (system)
+        entry: ansible-lint
+        language: system
+        files: ^ansible/
+
       - id: mimirtool-check-mimir-rules
         name: Validate Mimir rules (mimirtool)
         language: system

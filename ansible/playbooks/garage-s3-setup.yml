@@ -23,104 +23,104 @@
 
   tasks:
     - name: Verify app_name is set
-      assert:
+      ansible.builtin.assert:
         that:
           - app_name is defined
           - app_name | trim | length > 0
         fail_msg: "app_name must be set via survey"
 
     - name: Verify Vault token is set
-      assert:
+      ansible.builtin.assert:
         that:
           - vault_token | length > 0
         fail_msg: "vault_token must be set via survey or VAULT_TOKEN env var"
 
     - name: Resolve docker command in PATH
-      shell: "command -v {{ garage_docker_cmd }}"
+      ansible.builtin.command: "which {{ garage_docker_cmd }}"
       register: docker_cmd_path
       changed_when: false
       failed_when: false
       when: not (garage_docker_cmd is regex('^/'))
 
     - name: Set resolved docker command path
-      set_fact:
+      ansible.builtin.set_fact:
         garage_docker_cmd: "{{ docker_cmd_path.stdout }}"
       when:
         - not (garage_docker_cmd is regex('^/'))
         - docker_cmd_path.stdout | length > 0
 
     - name: Fail if docker command not found
-      fail:
+      ansible.builtin.fail:
         msg: "Docker command not found. Set garage_docker_cmd to the full path (e.g. /usr/bin/docker)."
       when:
         - not (garage_docker_cmd is regex('^/'))
         - docker_cmd_path.stdout | length == 0
 
     - name: Check Garage container is running
-      command: "{{ garage_docker_cmd }} ps --format '{% raw %}{{.Names}}{% endraw %}'"
+      ansible.builtin.command: "{{ garage_docker_cmd }} ps --format '{% raw %}{{.Names}}{% endraw %}'"
       register: docker_ps
       changed_when: false
       check_mode: false
 
     - name: Fail if Garage container is not running
-      fail:
+      ansible.builtin.fail:
         msg: "Garage container '{{ garage_container_name }}' is not running on {{ inventory_hostname }}"
       when:
         - not ansible_check_mode
         - garage_container_name not in docker_ps.stdout_lines
 
     - name: Set Garage CLI command
-      set_fact:
+      ansible.builtin.set_fact:
         garage_cli: "{{ garage_docker_cmd }} exec {{ garage_container_name }} /garage"
 
     - name: List existing buckets
-      command: "{{ garage_cli }} bucket list"
+      ansible.builtin.command: "{{ garage_cli }} bucket list"
       register: garage_bucket_list
       changed_when: false
 
     - name: Check if bucket exists
-      set_fact:
+      ansible.builtin.set_fact:
         garage_bucket_exists: "{{ garage_bucket_name in garage_bucket_list.stdout }}"
 
     - name: Create bucket
-      command: "{{ garage_cli }} bucket create {{ garage_bucket_name }}"
+      ansible.builtin.command: "{{ garage_cli }} bucket create {{ garage_bucket_name }}"
       when: not garage_bucket_exists
 
     - name: List existing keys
-      command: "{{ garage_cli }} key list"
+      ansible.builtin.command: "{{ garage_cli }} key list"
       register: garage_key_list
       changed_when: false
 
     - name: Check if key exists
-      set_fact:
+      ansible.builtin.set_fact:
         garage_key_exists: "{{ garage_key_name in garage_key_list.stdout }}"
 
     - name: Fail if key exists and rotation not enabled
-      fail:
+      ansible.builtin.fail:
         msg: >-
           Garage key '{{ garage_key_name }}' already exists. Set garage_key_force_rotate=true
           or change garage_key_name to create a new key.
       when: garage_key_exists and not garage_key_force_rotate
 
     - name: Set key name for creation
-      set_fact:
+      ansible.builtin.set_fact:
         garage_key_create_name: >-
           {{ garage_key_name if not garage_key_exists else garage_key_name ~ '-' ~ ansible_date_time.epoch }}
 
     - name: Create key
-      command: "{{ garage_cli }} key create {{ garage_key_create_name }}"
+      ansible.builtin.command: "{{ garage_cli }} key create {{ garage_key_create_name }}"
       register: garage_key_create
       when: not garage_key_exists or garage_key_force_rotate
 
     - name: Parse key ID and secret
-      set_fact:
+      ansible.builtin.set_fact:
         garage_key_id: "{{ (garage_key_create.stdout | regex_search('Key ID:\\s*(\\S+)', '\\1'))[0] }}"
         garage_secret_key: "{{ (garage_key_create.stdout | regex_search('Secret key:\\s*(\\S+)', '\\1'))[0] }}"
         garage_key_effective_name: "{{ garage_key_create_name }}"
       when: garage_key_create is defined and garage_key_create.stdout is defined
 
     - name: Build bucket permission flags
-      set_fact:
+      ansible.builtin.set_fact:
         garage_bucket_allow_flags: >-
           {{
             (garage_allow_read | bool) | ternary('--read ', '')
@@ -129,13 +129,13 @@
           }}
 
     - name: Allow key to access bucket
-      command: >-
+      ansible.builtin.command: >-
         {{ garage_cli }} bucket allow {{ garage_bucket_allow_flags }}{{ garage_bucket_name }} --key {{ garage_key_effective_name }}
       when: garage_key_effective_name is defined
 
     - name: Store Garage credentials in Vault
       delegate_to: localhost
-      uri:
+      ansible.builtin.uri:
         url: "{{ vault_addr }}/v1/{{ vault_s3_secret_path }}"
         method: POST
         headers:

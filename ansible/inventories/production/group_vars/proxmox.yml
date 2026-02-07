@@ -9,7 +9,7 @@ alloy_extra_config_blocks:
       endpoint {
         url = "{{ loki_endpoint }}/loki/api/v1/push"
       }
-      
+
       external_labels = {
         instance = "{{ inventory_hostname }}",
         env = "production",

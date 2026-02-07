@@ -2,8 +2,8 @@
 # Grafana Alloy default variables
 
 # Remote endpoints
-mimir_endpoint: "http://mimir.home.arpa:9009"
-loki_endpoint: "http://loki.home.arpa:3100"
+alloy_mimir_endpoint: "http://mimir.home.arpa:9009"
+alloy_loki_endpoint: "http://loki.home.arpa:3100"
 
 # Ports
 alloy_http_port: 12345

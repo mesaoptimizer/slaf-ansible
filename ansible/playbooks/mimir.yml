@@ -6,18 +6,19 @@
     - name: vault_token
       prompt: "Vault admin token (for retrieving AppRole credentials)"
       private: true
-  vars:
-    # Override defaults from group_vars/monitoring.yml if needed
-    # s3_endpoint: "https://garage.example.com:3900"
-    # mimir_s3_bucket: "mimir"
-    
+  # Override defaults from group_vars/monitoring.yml if needed
+  # s3_endpoint: "https://garage.example.com:3900"
+  # mimir_s3_bucket: "mimir"
+
+  vars: {}
+
   roles:
     - common
     - mimir
-  
+
   post_tasks:
     - name: Display Mimir deployment summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "============================================"
           - "Mimir deployment completed successfully"

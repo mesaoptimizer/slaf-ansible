@@ -2,7 +2,7 @@
 # Debian/Ubuntu specific tasks for Grafana Alloy
 
 - name: Install required packages
-  apt:
+  ansible.builtin.apt:
     name:
       - apt-transport-https
       - gpg
@@ -10,32 +10,32 @@
     update_cache: true
 
 - name: Create keyrings directory
-  file:
+  ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
     mode: "0755"
 
 - name: Download Grafana GPG key
-  get_url:
+  ansible.builtin.get_url:
     url: https://apt.grafana.com/gpg-full.key
     dest: /etc/apt/keyrings/grafana.asc
     mode: "0644"
 
 - name: Add Grafana APT repository
-  apt_repository:
+  ansible.builtin.apt_repository:
     repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
     state: present
     filename: grafana
 
 - name: Install Alloy from repository
-  apt:
+  ansible.builtin.apt:
     name: alloy
     state: present
     update_cache: true
   notify: restart alloy
 
 - name: Override systemd service file
-  template:
+  ansible.builtin.template:
     src: alloy.service.j2
     dest: /etc/systemd/system/alloy.service
     mode: "0644"
@@ -44,5 +44,5 @@
     - restart alloy
 
 - name: Reload systemd daemon
-  systemd:
+  ansible.builtin.systemd:
     daemon_reload: true
