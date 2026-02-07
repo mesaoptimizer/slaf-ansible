@@ -65,11 +65,10 @@ activity_tracker:
 
 ruler:
   rule_path: {{ mimir_data_dir }}/rules-temp
+  enable_api: true
 
 ruler_storage:
-  backend: local
-  local:
-    directory: {{ mimir_data_dir }}/rules
+  backend: s3
 
 alertmanager_storage:
   backend: local

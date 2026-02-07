@@ -3,8 +3,12 @@
 # Can be included from the main role or run standalone via the rules playbook
 #
 # Loki ruler API: POST /loki/api/v1/rules/{namespace}
-# Body: YAML rule group file
+# Body: a single bare rule group YAML (without the top-level "groups:" key)
 # Header: X-Scope-OrgID (use "fake" since auth_enabled is false)
+#
+# Rule files are kept in standard Prometheus format (with a "groups:" wrapper)
+# for compatibility with lokitool validation.  The inline Jinja2 filter
+# strips the wrapper before POSTing each group individually.
 
 - name: Find all Loki alert rule files
   ansible.builtin.find:
@@ -14,19 +18,34 @@
   become: false
   register: loki_alert_rule_files
 
+- name: Build flat list of (file, group) pairs for upload
+  ansible.builtin.set_fact:
+    loki_rule_groups: >-
+      {%- set result = [] -%}
+      {%- for f in loki_alert_rule_files.files -%}
+        {%- set parsed = lookup('file', f.path) | from_yaml -%}
+        {%- for g in parsed.groups | default([]) -%}
+          {%- set _ = result.append({'namespace': f.path | basename | regex_replace('\\.yml$', ''), 'group': g}) -%}
+        {%- endfor -%}
+      {%- endfor -%}
+      {{ result }}
+
 - name: Push Loki rules via ruler API
   ansible.builtin.uri:
-    url: "http://{{ ansible_host }}:{{ loki_http_port }}/loki/api/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
+    url: "http://{{ ansible_host }}:{{ loki_http_port }}/loki/api/v1/rules/{{ item.namespace }}"
     method: POST
     headers:
       Content-Type: "application/yaml"
       X-Scope-OrgID: "fake"
-    body: "{{ lookup('file', item.path) }}"
-    status_code: [200, 202]
-  loop: "{{ loki_alert_rule_files.files }}"
+    body: "{{ item.group | to_nice_yaml }}"
+    body_format: raw
+    status_code: [202]
+    return_content: true
+  register: loki_push_result
+  loop: "{{ loki_rule_groups }}"
   loop_control:
-    label: "{{ item.path | basename }}"
-  when: loki_alert_rule_files.files | length > 0
+    label: "{{ item.namespace }} / {{ item.group.name }}"
+  when: loki_rule_groups | length > 0
 
 - name: Verify Loki rules were loaded
   ansible.builtin.uri:
