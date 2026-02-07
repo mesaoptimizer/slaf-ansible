@@ -2,9 +2,15 @@
 # Deploy Mimir rules via the Mimir ruler API
 # Can be included from the main role or run standalone via the rules playbook
 #
-# Mimir ruler API: POST /api/v1/rules/{namespace}
-# Body: YAML rule group file
+# Mimir ruler API: POST /prometheus/config/v1/rules/{namespace}
+# Body: YAML rule group (single group, without top-level "groups:" key)
 # Header: X-Scope-OrgID (use "anonymous" since multitenancy is disabled)
+#
+# Note: The ruler API expects a single bare rule group per POST, not a
+# Prometheus-format file with a "groups:" wrapper.  We copy the rule files
+# to the target host first, then use Python to strip the wrapper and POST
+# each group individually via curl.  This avoids Ansible's Jinja2 engine
+# mangling Prometheus template expressions ({{ $labels }}).
 
 - name: Find all Mimir alert rule files
   ansible.builtin.find:
@@ -26,20 +32,54 @@
   ansible.builtin.set_fact:
     mimir_all_rule_files: "{{ mimir_alert_rule_files.files + mimir_recording_rule_files.files }}"
 
-- name: Push Mimir rules via ruler API
-  ansible.builtin.uri:
-    url: "http://{{ ansible_host }}:{{ mimir_http_port }}/prometheus/config/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
-    method: POST
-    headers:
-      Content-Type: "application/yaml"
-      X-Scope-OrgID: "anonymous"
+- name: Create temporary directory for rule files on target
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: mimir_rules_
+  register: mimir_rules_tmpdir
+  when: mimir_all_rule_files | length > 0
+
+- name: Copy rule files to target host
+  ansible.builtin.copy:
     src: "{{ item.path }}"
-    status_code: [200, 202]
-  delegate_to: localhost
-  become: false
+    dest: "{{ mimir_rules_tmpdir.path }}/{{ item.path | basename }}"
+    mode: "0644"
   loop: "{{ mimir_all_rule_files }}"
   loop_control:
     label: "{{ item.path | basename }}"
+  when: mimir_all_rule_files | length > 0
+
+- name: Push Mimir rules via ruler API  # noqa: command-instead-of-module no-changed-when
+  ansible.builtin.shell: |
+    set -e
+    python3 -c "
+    import yaml, subprocess, sys
+    with open('{{ mimir_rules_tmpdir.path }}/{{ item.path | basename }}') as f:
+        data = yaml.safe_load(f)
+    for group in data.get('groups', []):
+        body = yaml.dump(group, default_flow_style=False)
+        result = subprocess.run(
+            ['curl', '-sf', '-X', 'POST',
+             '-H', 'Content-Type: application/yaml',
+             '-H', 'X-Scope-OrgID: anonymous',
+             '--data-binary', '@-',
+             'http://localhost:{{ mimir_http_port }}/prometheus/config/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}'],
+            input=body.encode(), capture_output=True)
+        if result.returncode != 0:
+            print(result.stderr.decode(), file=sys.stderr)
+            sys.exit(result.returncode)
+    "
+  args:
+    executable: /bin/bash
+  loop: "{{ mimir_all_rule_files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: mimir_all_rule_files | length > 0
+
+- name: Remove temporary rule files from target
+  ansible.builtin.file:
+    path: "{{ mimir_rules_tmpdir.path }}"
+    state: absent
   when: mimir_all_rule_files | length > 0
 
 - name: Verify Mimir rules were loaded
