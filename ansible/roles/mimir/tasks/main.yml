@@ -124,7 +124,7 @@
     owner: mimir
     group: mimir
     mode: "0640"
-  notify: restart mimir
+  notify: Restart mimir
 
 - name: Create mimir log file
   ansible.builtin.file:
@@ -141,7 +141,7 @@
     src: mimir.service.j2
     dest: /etc/init.d/mimir
     mode: "0755"
-  notify: restart mimir
+  notify: Restart mimir
 
 - name: Enable and start Mimir service
   ansible.builtin.service:
