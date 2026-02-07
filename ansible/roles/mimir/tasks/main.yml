@@ -182,6 +182,19 @@
       - "HTTP endpoint: http://localhost:{{ mimir_http_port }}"
       - "Metrics endpoint: http://localhost:{{ mimir_http_port }}/metrics"
 
+- name: Flush handlers to restart Mimir before deploying rules
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for Mimir to be ready after potential restart
+  ansible.builtin.uri:
+    url: "http://localhost:{{ mimir_http_port }}/ready"
+    method: GET
+    status_code: 200
+  retries: 10
+  delay: 2
+  register: mimir_ready_after_restart
+  until: mimir_ready_after_restart.status == 200
+
 - name: Deploy Mimir rules
   ansible.builtin.include_tasks: deploy-rules.yml
   tags:
