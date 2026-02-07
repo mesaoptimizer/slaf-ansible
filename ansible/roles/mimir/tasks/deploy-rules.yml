@@ -28,7 +28,7 @@
 
 - name: Push Mimir rules via ruler API
   ansible.builtin.uri:
-    url: "http://{{ ansible_host }}:{{ mimir_http_port }}/prometheus/api/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
+    url: "http://{{ ansible_host }}:{{ mimir_http_port }}/prometheus/config/v1/rules/{{ item.path | basename | regex_replace('\\.yml$', '') }}"
     method: POST
     headers:
       Content-Type: "application/yaml"
