@@ -7,7 +7,7 @@ groups:
     rules:
       - alert: RootSSHLogin
         expr: |
-          count_over_time({job=~".*sshd.*|.*ssh.*"} |~ "Accepted .+ for root" [5m]) > 0
+          count_over_time({log_type="ssh_auth"} |~ "Accepted .+ for root" [5m]) > 0
         for: 0s
         labels:
           severity: warning
