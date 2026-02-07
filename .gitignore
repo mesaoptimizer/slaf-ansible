@@ -1,6 +1,7 @@
 # Ansible
 *.retry
 ansible/collections/ansible_collections/
+.lock
 
 # Python
 __pycache__/
