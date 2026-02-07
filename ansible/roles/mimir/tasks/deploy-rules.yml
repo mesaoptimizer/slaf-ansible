@@ -49,7 +49,7 @@
     label: "{{ item.path | basename }}"
   when: mimir_all_rule_files | length > 0
 
-- name: Push Mimir rules via ruler API  # noqa: command-instead-of-module no-changed-when
+- name: Push Mimir rules via ruler API # noqa: command-instead-of-module no-changed-when
   ansible.builtin.shell: |
     set -e
     python3 -c "
