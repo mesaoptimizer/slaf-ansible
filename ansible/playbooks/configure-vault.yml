@@ -11,6 +11,7 @@
     app_role_name: "{{ app_name }}-app"
     app_policy_name: "{{ app_name }}-s3-access"
     regenerate_secret_id: false
+    store_secret_id_in_vault: true
     secret_id_storage_path: "secret/data/approle/{{ app_name }}"
 
   tasks:
@@ -129,8 +130,7 @@
         validate_certs: false
       register: secret_id_result
       when:
-        - regenerate_secret_id | bool
-        - existing_secret_id is not defined
+        - regenerate_secret_id | bool or existing_secret_id is not defined
 
     - name: Set Secret ID value from Vault
       ansible.builtin.set_fact:
@@ -157,7 +157,7 @@
         validate_certs: false
       when:
         - store_secret_id_in_vault | bool
-        - secret_id_result.json.data.secret_id is defined
+        - secret_id_value is defined
 
     - name: "Display AppRole configuration for {{ app_name }}"
       ansible.builtin.debug:
