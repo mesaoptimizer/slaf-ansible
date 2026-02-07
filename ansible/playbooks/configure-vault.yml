@@ -63,7 +63,7 @@
           token_type: batch
           token_ttl: "20m"
           token_max_ttl: "1h"
-          secret_id_ttl: "24h"
+          secret_id_ttl: "0"
           secret_id_num_uses: 0
           token_policies:
             - "{{ app_policy_name }}"
