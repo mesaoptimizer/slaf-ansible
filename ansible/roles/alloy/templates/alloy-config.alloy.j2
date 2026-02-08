@@ -33,7 +33,7 @@ prometheus.scrape "node" {
 // Remote write to Mimir
 prometheus.remote_write "mimir" {
   endpoint {
-    url = "{{ mimir_endpoint }}/api/v1/push"
+    url = "{{ alloy_mimir_endpoint }}/api/v1/push"
   }
 
   external_labels = {
@@ -47,8 +47,176 @@ prometheus.remote_write "mimir" {
 // ============================================================================
 // LOG COLLECTION
 // ============================================================================
-// Log collection disabled - using metrics only
-// To enable log collection to Loki, uncomment the configuration below
+{% if alloy_log_collection_enabled | default(true) %}
+
+// Loki write endpoint (shared by all log sources)
+loki.write "default" {
+  endpoint {
+    url = "{{ alloy_loki_endpoint }}/loki/api/v1/push"
+  }
+
+  external_labels = {
+    instance = "{{ inventory_hostname }}",
+{% for key, value in alloy_external_labels.items() %}
+    {{ key }} = "{{ value }}",
+{% endfor %}
+  }
+}
+
+{% if ansible_os_family == 'Debian' %}
+// ---------------------------------------------------------------------------
+// Systemd journal collection (Debian/Ubuntu)
+// ---------------------------------------------------------------------------
+
+// Security-relevant units: SSH authentication
+loki.source.journal "ssh" {
+  matches = "_SYSTEMD_UNIT=ssh.service"
+  forward_to = [loki.relabel.journal.receiver]
+  labels = {
+    job = "ssh",
+  }
+}
+
+// Security-relevant units: sudo commands
+loki.source.journal "sudo" {
+  matches = "_COMM=sudo"
+  forward_to = [loki.relabel.journal.receiver]
+  labels = {
+    job = "sudo",
+  }
+}
+
+// Critical/error priority logs (priority 0-3: emerg, alert, crit, err)
+// Captures service crashes, kernel errors, OOM kills, hardware failures
+loki.source.journal "critical" {
+  matches = "PRIORITY=0", "PRIORITY=1", "PRIORITY=2", "PRIORITY=3"
+  forward_to = [loki.relabel.journal.receiver]
+  labels = {
+    job = "system",
+  }
+}
+
+{% for unit in alloy_journal_units %}
+// Extra journal unit: {{ unit }}
+loki.source.journal "extra_{{ unit | regex_replace('\\.service$', '') | regex_replace('[^a-zA-Z0-9]', '_') }}" {
+  matches = "_SYSTEMD_UNIT={{ unit }}"
+  forward_to = [loki.relabel.journal.receiver]
+  labels = {
+    job = "system",
+  }
+}
+{% endfor %}
+
+// Relabel journal entries: extract unit and priority as low-cardinality labels,
+// drop all other __journal_ internal labels to prevent cardinality explosion
+loki.relabel "journal" {
+  forward_to = [loki.write.default.receiver]
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal_priority"]
+    target_label  = "level"
+  }
+
+  // Drop all remaining __journal_ labels to control cardinality
+  rule {
+    action = "labeldrop"
+    regex  = "__journal_.+"
+  }
+}
+
+{% elif ansible_os_family == 'Alpine' %}
+// ---------------------------------------------------------------------------
+// Syslog file collection (Alpine/OpenRC)
+// ---------------------------------------------------------------------------
+
+// Read /var/log/messages (BSD syslog format)
+loki.source.file "syslog" {
+  targets = [
+    {__path__ = "/var/log/messages", job = "system"},
+  ]
+  forward_to = [loki.process.syslog_filter.receiver]
+}
+
+// Parse syslog lines, extract program name, filter to security-relevant
+// programs only, and map priority to level label for schema consistency
+loki.process "syslog_filter" {
+  forward_to = [loki.write.default.receiver]
+
+  // Extract program name and optional priority from BSD syslog format
+  // Format: "Mon DD HH:MM:SS hostname program[pid]: message"
+  stage.regex {
+    expression = "^\\w+\\s+\\d+\\s+[\\d:]+\\s+\\S+\\s+(?P<program>[\\w\\-]+)(?:\\[\\d+\\])?:"
+  }
+
+  // Drop lines not matching the security-relevant program allowlist
+  stage.match {
+    selector = "{job=\"system\"}"
+    pipeline_name = "drop_noisy"
+    action = "drop"
+
+    stage.match {
+      selector = "{job=\"system\"} |~ \"{{ alloy_syslog_match_regex }}\""
+      pipeline_name = "keep_wanted"
+      action = "drop"
+      drop_counter_reason = "not_matched"
+    }
+  }
+
+  // Promote program to a label (bounded by the allowlist regex above)
+  stage.labels {
+    values = {
+      program = "",
+    }
+  }
+
+  // Set job="ssh" for sshd lines to match systemd schema
+  stage.match {
+    selector = "{program=\"sshd\"}"
+
+    stage.static_labels {
+      values = {
+        job = "ssh",
+      }
+    }
+  }
+
+  // Set job="sudo" for sudo lines to match systemd schema
+  stage.match {
+    selector = "{program=\"sudo\"}"
+
+    stage.static_labels {
+      values = {
+        job = "sudo",
+      }
+    }
+  }
+
+  // Extract syslog priority and map to level label
+  stage.regex {
+    expression = "^<(?P<pri>\\d+)>"
+  }
+
+  stage.template {
+    source = "level"
+    template = "{{ "{{" }} if .pri {{ "}}" }}{{ "{{" }} if le .pri 3 {{ "}}" }}error{{ "{{" }} else if le .pri 5 {{ "}}" }}warn{{ "{{" }} else {{ "}}" }}info{{ "{{" }} end {{ "}}" }}{{ "{{" }} else {{ "}}" }}info{{ "{{" }} end {{ "}}" }}"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+}
+
+{% endif %}
+{% else %}
+// Log collection disabled (alloy_log_collection_enabled = false)
+{% endif %}
 
 // ============================================================================
 // EXTRA CONFIGURATION BLOCKS

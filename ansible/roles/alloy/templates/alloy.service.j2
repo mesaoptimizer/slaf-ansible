@@ -16,14 +16,15 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 
+# Log access
+SupplementaryGroups=systemd-journal
+ReadOnlyPaths=/var/log
+
 # Hardening
 NoNewPrivileges=true
 ProtectSystem=full
 ProtectHome=true
 PrivateTmp=true
-
-# Allow reading log files
-ReadOnlyPaths=/var/log
 
 [Install]
 WantedBy=multi-user.target

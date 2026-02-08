@@ -7,12 +7,12 @@ groups:
     rules:
       - alert: RootSSHLogin
         expr: |
-          count_over_time({log_type="ssh_auth"} |~ "Accepted .+ for root" [5m]) > 0
+          count_over_time({job="ssh"} |~ "Accepted .+ for root" [5m]) > 0
         for: 0s
         labels:
           severity: warning
         annotations:
-          summary: "Root SSH login detected on {{ $labels.host }}"
+          summary: "Root SSH login detected on {{ $labels.instance }}"
           description: >-
-            A root SSH login was detected in the SSH logs on {{ $labels.host }}.
+            A root SSH login was detected in the SSH logs on {{ $labels.instance }}.
             This may indicate unauthorized access. Review SSH logs immediately.

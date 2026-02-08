@@ -25,16 +25,33 @@ alloy_group: alloy
 # Log file (for OpenRC)
 alloy_log_file: /var/log/alloy.log
 
-# Distro-specific log paths for base config
-alloy_log_paths_alpine:
-  - path: "/var/log/messages"
-    log_type: "syslog"
+# ============================================================================
+# LOG COLLECTION
+# ============================================================================
 
-alloy_log_paths_debian:
-  - path: "/var/log/auth.log"
-    log_type: "auth"
-  - path: "/var/log/syslog"
-    log_type: "syslog"
+# Enable/disable system log collection to Loki
+alloy_log_collection_enabled: true
+
+# Additional systemd journal units to collect (Debian/Ubuntu).
+# ssh.service is always collected. Add extra units here.
+alloy_journal_units:
+  - cron.service
+
+# Syslog program allowlist regex (Alpine/OpenRC).
+# Only log lines from matching programs are ingested from /var/log/messages.
+# Keep this bounded to avoid high cardinality.
+alloy_syslog_match_regex: "(sshd|sudo|su|CRON|kernel|rc-service|openrc|init)"
+
+# DEPRECATED: Use alloy_log_collection_enabled, alloy_journal_units, and
+# alloy_syslog_match_regex instead. These variables are no longer referenced.
+# alloy_log_paths_alpine:
+#   - path: "/var/log/messages"
+#     log_type: "syslog"
+# alloy_log_paths_debian:
+#   - path: "/var/log/auth.log"
+#     log_type: "auth"
+#   - path: "/var/log/syslog"
+#     log_type: "syslog"
 
 # Scrape interval for metrics
 alloy_scrape_interval: "60s"
