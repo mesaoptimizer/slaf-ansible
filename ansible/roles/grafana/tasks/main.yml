@@ -160,7 +160,7 @@
     owner: "{{ grafana_user }}"
     group: "{{ grafana_group }}"
     mode: "0640"
-  notify: restart grafana
+  notify: Restart grafana
 
 - name: Generate datasources provisioning configuration
   ansible.builtin.template:
@@ -169,7 +169,7 @@
     owner: "{{ grafana_user }}"
     group: "{{ grafana_group }}"
     mode: "0640"
-  notify: restart grafana
+  notify: Restart grafana
 
 - name: Create Grafana log file
   ansible.builtin.file:
@@ -186,7 +186,7 @@
     src: grafana.service.j2
     dest: /etc/init.d/grafana
     mode: "0755"
-  notify: restart grafana
+  notify: Restart grafana
 
 - name: Enable and start Grafana service
   ansible.builtin.service:
