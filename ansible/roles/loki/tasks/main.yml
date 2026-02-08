@@ -150,6 +150,25 @@
         loki_s3_bucket: "{{ loki_s3_credentials_result.json.data.data.bucket_name | default('loki') }}"
         cacheable: true
 
+- name: Retrieve Grafana Cloud Alertmanager credentials from Vault
+  block:
+    - name: Retrieve Grafana Cloud Alertmanager credentials
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/{{ loki_grafanacloud_alertmanager_vault_path }}"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ loki_vault_auth_result.json.auth.client_token }}"
+        status_code: 200
+        validate_certs: false
+      register: loki_grafanacloud_am_result
+      check_mode: false
+
+    - name: Set Grafana Cloud Alertmanager credentials
+      ansible.builtin.set_fact:
+        loki_grafanacloud_am_id: "{{ loki_grafanacloud_am_result.json.data.data.id }}"
+        loki_grafanacloud_am_token: "{{ loki_grafanacloud_am_result.json.data.data.token }}"
+        cacheable: true
+
 - name: Generate Loki configuration
   ansible.builtin.template:
     src: loki-config.yml.j2

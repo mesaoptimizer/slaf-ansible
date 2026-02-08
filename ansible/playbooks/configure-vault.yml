@@ -81,6 +81,9 @@
             path "secret/data/garage/{{ app_name }}/*" {
               capabilities = ["read", "list"]
             }
+            path "secret/data/grafanacloud/*" {
+              capabilities = ["read", "list"]
+            }
             path "auth/approle/role/{{ app_role_name }}/secret-id" {
               capabilities = ["update"]
             }

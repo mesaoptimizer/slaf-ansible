@@ -53,6 +53,11 @@ limits:
   ingestion_burst_size: 200000
   # Retention period (7 days = 168 hours)
   compactor_blocks_retention_period: 168h
+  # Grafana Cloud Alertmanager configuration (per-tenant, non-deprecated)
+  ruler_alertmanager_client_config:
+    alertmanager_url: "{{ mimir_grafanacloud_alertmanager_url }}"
+    basic_auth_username: "{{ mimir_grafanacloud_am_id }}"
+    basic_auth_password: "{{ mimir_grafanacloud_am_token }}"
 
 server:
   http_listen_port: {{ mimir_http_port }}
@@ -65,6 +70,7 @@ activity_tracker:
 ruler:
   rule_path: {{ mimir_data_dir }}/rules-temp
   enable_api: true
+  external_url: "{{ mimir_grafanacloud_external_url }}"
 
 ruler_storage:
   backend: s3
