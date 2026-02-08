@@ -32,7 +32,7 @@
     name: alloy
     state: present
     update_cache: true
-  notify: restart alloy
+  notify: Restart alloy
 
 - name: Override systemd service file
   ansible.builtin.template:
@@ -40,8 +40,8 @@
     dest: /etc/systemd/system/alloy.service
     mode: "0644"
   notify:
-    - reload systemd
-    - restart alloy
+    - Reload systemd
+    - Restart alloy
 
 - name: Reload systemd daemon
   ansible.builtin.systemd:

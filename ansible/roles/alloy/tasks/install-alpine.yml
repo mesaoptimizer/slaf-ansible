@@ -38,7 +38,7 @@
     url: "https://github.com/grafana/alloy/releases/download/v{{ alloy_download_version }}/alloy-linux-{{ alloy_arch }}"
     dest: "{{ alloy_binary_path }}"
     mode: "0755"
-  notify: restart alloy
+  notify: Restart alloy
 
 - name: Create Alloy log file (Alpine)
   ansible.builtin.file:
@@ -54,4 +54,4 @@
     src: alloy.openrc.j2
     dest: /etc/init.d/alloy
     mode: "0755"
-  notify: restart alloy
+  notify: Restart alloy
