@@ -88,13 +88,16 @@ loki.source.journal "sudo" {
 
 // Critical/error priority logs (priority 0-3: emerg, alert, crit, err)
 // Captures service crashes, kernel errors, OOM kills, hardware failures
-loki.source.journal "critical" {
-  matches = "PRIORITY=0", "PRIORITY=1", "PRIORITY=2", "PRIORITY=3"
+// Each priority needs its own journal source since matches is a single string
+{% for pri in [0, 1, 2, 3] %}
+loki.source.journal "priority_{{ pri }}" {
+  matches = "PRIORITY={{ pri }}"
   forward_to = [loki.relabel.journal.receiver]
   labels = {
     job = "system",
   }
 }
+{% endfor %}
 
 {% for unit in alloy_journal_units %}
 // Extra journal unit: {{ unit }}
