@@ -27,17 +27,3 @@ repos:
         entry: ansible-lint
         language: system
         files: ^ansible/
-
-      - id: mimirtool-check-mimir-rules
-        name: Validate Mimir rules (mimirtool)
-        language: system
-        entry: bash -c 'for f in "$@"; do mimirtool rules check "$f" || exit 1; done' --
-        files: "ansible/roles/mimir/files/rules/.*\\.yml$"
-        types: [yaml]
-
-      - id: lokitool-check-loki-rules
-        name: Validate Loki rules (lokitool)
-        language: system
-        entry: bash -c 'for f in "$@"; do lokitool rules check "$f" || exit 1; done' --
-        files: "ansible/roles/loki/files/rules/.*\\.yml$"
-        types: [yaml]

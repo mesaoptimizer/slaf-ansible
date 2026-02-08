@@ -35,9 +35,6 @@
     - /var/lib/mimir
     - /var/lib/mimir/tsdb
     - /var/lib/mimir/compactor
-    - /var/lib/mimir/rules
-    - /var/lib/mimir/rules/anonymous
-    - /var/lib/mimir/rules-temp
     - /var/lib/mimir/alertmanager
     - /var/lib/mimir/tsdb-sync
     - /etc/mimir
@@ -117,25 +114,6 @@
         mimir_s3_bucket: "{{ mimir_s3_credentials_result.json.data.data.bucket_name | default('mimir') }}"
         cacheable: true
 
-- name: Retrieve Grafana Cloud Alertmanager credentials from Vault
-  block:
-    - name: Retrieve Grafana Cloud Alertmanager credentials
-      ansible.builtin.uri:
-        url: "{{ vault_addr }}/v1/{{ mimir_grafanacloud_alertmanager_vault_path }}"
-        method: GET
-        headers:
-          X-Vault-Token: "{{ mimir_vault_auth_result.json.auth.client_token }}"
-        status_code: 200
-        validate_certs: false
-      register: mimir_grafanacloud_am_result
-      check_mode: false
-
-    - name: Set Grafana Cloud Alertmanager credentials
-      ansible.builtin.set_fact:
-        mimir_grafanacloud_am_id: "{{ mimir_grafanacloud_am_result.json.data.data.id }}"
-        mimir_grafanacloud_am_token: "{{ mimir_grafanacloud_am_result.json.data.data.token }}"
-        cacheable: true
-
 - name: Generate Mimir configuration
   ansible.builtin.template:
     src: mimir-config.yml.j2
@@ -200,22 +178,3 @@
       - "Data directory: /var/lib/mimir"
       - "HTTP endpoint: http://localhost:{{ mimir_http_port }}"
       - "Metrics endpoint: http://localhost:{{ mimir_http_port }}/metrics"
-
-- name: Flush handlers to restart Mimir before deploying rules
-  ansible.builtin.meta: flush_handlers
-
-- name: Wait for Mimir to be ready after potential restart
-  ansible.builtin.uri:
-    url: "http://localhost:{{ mimir_http_port }}/ready"
-    method: GET
-    status_code: 200
-  retries: 10
-  delay: 3
-  register: mimir_ready_after_restart
-  until: mimir_ready_after_restart.status == 200
-
-- name: Deploy Mimir rules
-  ansible.builtin.include_tasks: deploy-rules.yml
-  tags:
-    - mimir-rules
-    - rules

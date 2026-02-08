@@ -27,8 +27,3 @@ loki_s3_force_path_style: true
 # Vault configuration
 loki_vault_addr: "https://vault.lan.schlaefli.dev"
 loki_vault_skip_verify: false
-
-# Grafana Cloud Alertmanager configuration
-loki_grafanacloud_alertmanager_url: "https://alertmanager-prod-us-west-0.grafana.net"
-loki_grafanacloud_external_url: "http://grafana.home.arpa:3000"
-loki_grafanacloud_alertmanager_vault_path: "secret/data/grafanacloud/alertmanagerwrite"

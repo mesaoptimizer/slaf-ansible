@@ -35,8 +35,3 @@ mimir_block_retention_hours: 168
 # Limits and configuration
 mimir_max_ingestion_rate: 100000
 mimir_max_ingestion_burst: 200000
-
-# Grafana Cloud Alertmanager configuration
-mimir_grafanacloud_alertmanager_url: "https://alertmanager-prod-us-west-0.grafana.net"
-mimir_grafanacloud_external_url: "http://grafana.home.arpa:3000"
-mimir_grafanacloud_alertmanager_vault_path: "secret/data/grafanacloud/alertmanagerwrite"
