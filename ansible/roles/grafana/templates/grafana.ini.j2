@@ -10,7 +10,7 @@ provisioning = {{ grafana_provisioning_dir }}
 [server]
 http_addr = {{ grafana_http_addr }}
 http_port = {{ grafana_http_port }}
-root_url = %(protocol)s://%(domain)s:%(http_port)s/
+root_url = https://monitoring.schlaefli.dev
 
 [database]
 type = sqlite3
