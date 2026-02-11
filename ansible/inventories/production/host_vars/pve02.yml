@@ -1,0 +1,18 @@
+---
+# Host-specific variables for pve02
+
+# PVE Exporter scraping - only pve02 collects cluster-wide Proxmox metrics
+# to avoid duplication across all nodes
+alloy_extra_config_blocks:
+  - |
+    // Scrape Proxmox metrics from prometheus-pve-exporter LXC
+    prometheus.scrape "pve_exporter" {
+      targets = [
+        {"__address__" = "10.20.0.101:9221", "job" = "proxmox", "cluster" = "homelab"},
+      ]
+      forward_to = [prometheus.remote_write.mimir.receiver]
+      scrape_interval = "60s"
+      clustering {
+        enabled = false
+      }
+    }
