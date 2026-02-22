@@ -35,6 +35,6 @@
           - "  You will be prompted to change the password on first login."
           - ""
           - "Service Management:"
-          - "  rc-service grafana status"
-          - "  rc-service grafana restart"
+          - "  systemctl status grafana"
+          - "  systemctl restart grafana"
           - "========================================"

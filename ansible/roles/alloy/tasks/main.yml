@@ -22,14 +22,6 @@
     name: "{{ alloy_user }}"
     groups: systemd-journal
     append: true
-  when: ansible_os_family == 'Debian'
-
-- name: Add Alloy user to adm group (Alpine)
-  ansible.builtin.user:
-    name: "{{ alloy_user }}"
-    groups: adm
-    append: true
-  when: ansible_os_family == 'Alpine'
 
 - name: Create Alloy directories
   ansible.builtin.file:
@@ -58,12 +50,8 @@
   ansible.builtin.include_tasks: install-debian.yml
   when: ansible_os_family == 'Debian'
 
-- name: Include Alpine specific tasks
-  ansible.builtin.include_tasks: install-alpine.yml
-  when: ansible_os_family == 'Alpine'
-
 - name: Enable and start Alloy service
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: alloy
     state: started
     enabled: true
@@ -72,30 +60,13 @@
   ansible.builtin.pause:
     seconds: 30
 
-- name: Check that Alloy service is still running (Debian)
+- name: Check that Alloy service is still running
   ansible.builtin.service_facts:
-  when: ansible_os_family == 'Debian'
 
-- name: Verify Alloy service is active (Debian)
+- name: Verify Alloy service is active
   ansible.builtin.assert:
     that:
       - ansible_facts.services['alloy.service'] is defined
       - ansible_facts.services['alloy.service'].state == 'running'
     fail_msg: "Alloy service crashed after starting"
     success_msg: "Alloy service is running successfully"
-  when: ansible_os_family == 'Debian'
-
-- name: Check that Alloy service is still running (Alpine)
-  ansible.builtin.command: rc-service alloy status
-  register: alloy_rc_status
-  changed_when: false
-  failed_when: false
-  when: ansible_os_family == 'Alpine'
-
-- name: Verify Alloy service is active (Alpine)
-  ansible.builtin.assert:
-    that:
-      - alloy_rc_status.rc == 0
-    fail_msg: "Alloy service crashed after starting"
-    success_msg: "Alloy service is running successfully"
-  when: ansible_os_family == 'Alpine'

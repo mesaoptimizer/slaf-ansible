@@ -1,16 +1,16 @@
 ---
-# Grafana installation and configuration tasks for Alpine Linux
+# Grafana installation and configuration tasks for Debian/Ubuntu
 
 - name: Install Grafana dependencies
-  community.general.apk:
+  ansible.builtin.apt:
     name:
       - curl
       - ca-certificates
-      - bash
-      - musl
       - fontconfig
-      - freetype
+      - libfontconfig1
+      - libfreetype6
       - tar
+      - unzip
     state: present
     update_cache: true
 
@@ -24,7 +24,7 @@
   ansible.builtin.user:
     name: "{{ grafana_user }}"
     group: "{{ grafana_group }}"
-    shell: /sbin/nologin
+    shell: /usr/sbin/nologin
     home: "{{ grafana_data_dir }}"
     createhome: false
     system: true
@@ -181,15 +181,19 @@
     modification_time: preserve
     access_time: preserve
 
-- name: Create OpenRC service for Grafana
+- name: Create systemd service for Grafana
   ansible.builtin.template:
     src: grafana.service.j2
-    dest: /etc/init.d/grafana
-    mode: "0755"
+    dest: /etc/systemd/system/grafana.service
+    mode: "0644"
   notify: Restart grafana
 
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
 - name: Enable and start Grafana service
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: grafana
     state: started
     enabled: true

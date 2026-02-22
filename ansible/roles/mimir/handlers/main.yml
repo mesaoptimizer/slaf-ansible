@@ -1,11 +1,11 @@
 ---
 - name: Restart mimir
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: mimir
     state: restarted
     enabled: true
 
 - name: Reload mimir
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: mimir
     state: reloaded

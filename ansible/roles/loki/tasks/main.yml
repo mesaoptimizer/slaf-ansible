@@ -1,10 +1,9 @@
 ---
 - name: Install Loki dependencies
-  community.general.apk:
+  ansible.builtin.apt:
     name:
       - curl
       - ca-certificates
-      - libcap
       - unzip
     state: present
     update_cache: true
@@ -168,14 +167,18 @@
     modification_time: preserve
     access_time: preserve
 
-- name: Create Loki OpenRC service
+- name: Create Loki systemd service
   ansible.builtin.template:
     src: loki.service.j2
-    dest: /etc/init.d/loki
-    mode: "0755"
+    dest: /etc/systemd/system/loki.service
+    mode: "0644"
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
 
 - name: Enable and start Loki service
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: loki
     state: started
     enabled: true

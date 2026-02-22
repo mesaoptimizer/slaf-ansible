@@ -1,5 +1,5 @@
 ---
 - name: Reload loki
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: loki
     state: reloaded

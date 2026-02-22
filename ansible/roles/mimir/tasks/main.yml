@@ -1,10 +1,9 @@
 ---
 - name: Install Mimir dependencies
-  community.general.apk:
+  ansible.builtin.apt:
     name:
       - curl
       - ca-certificates
-      - libcap
     state: present
     update_cache: true
 
@@ -137,12 +136,16 @@
 - name: Create Mimir systemd service
   ansible.builtin.template:
     src: mimir.service.j2
-    dest: /etc/init.d/mimir
-    mode: "0755"
+    dest: /etc/systemd/system/mimir.service
+    mode: "0644"
   notify: Restart mimir
 
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
 - name: Enable and start Mimir service
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: mimir
     state: started
     enabled: true

@@ -63,7 +63,6 @@ loki.write "default" {
   }
 }
 
-{% if ansible_os_family == 'Debian' %}
 // ---------------------------------------------------------------------------
 // Systemd journal collection (Debian/Ubuntu)
 // ---------------------------------------------------------------------------
@@ -132,91 +131,6 @@ loki.relabel "journal" {
   }
 }
 
-{% elif ansible_os_family == 'Alpine' %}
-// ---------------------------------------------------------------------------
-// Syslog file collection (Alpine/OpenRC)
-// ---------------------------------------------------------------------------
-
-// Read /var/log/messages (BSD syslog format)
-loki.source.file "syslog" {
-  targets = [
-    {__path__ = "/var/log/messages", job = "system"},
-  ]
-  forward_to = [loki.process.syslog_filter.receiver]
-}
-
-// Parse syslog lines, extract program name, filter to security-relevant
-// programs only, and map priority to level label for schema consistency
-loki.process "syslog_filter" {
-  forward_to = [loki.write.default.receiver]
-
-  // Extract program name and optional priority from BSD syslog format
-  // Format: "Mon DD HH:MM:SS hostname program[pid]: message"
-  stage.regex {
-    expression = "^\\w+\\s+\\d+\\s+[\\d:]+\\s+\\S+\\s+(?P<program>[\\w\\-]+)(?:\\[\\d+\\])?:"
-  }
-
-  // Drop lines not matching the security-relevant program allowlist
-  stage.match {
-    selector = "{job=\"system\"}"
-    pipeline_name = "drop_noisy"
-    action = "drop"
-
-    stage.match {
-      selector = "{job=\"system\"} |~ \"{{ alloy_syslog_match_regex }}\""
-      pipeline_name = "keep_wanted"
-      action = "drop"
-      drop_counter_reason = "not_matched"
-    }
-  }
-
-  // Promote program to a label (bounded by the allowlist regex above)
-  stage.labels {
-    values = {
-      program = "",
-    }
-  }
-
-  // Set job="ssh" for sshd lines to match systemd schema
-  stage.match {
-    selector = "{program=\"sshd\"}"
-
-    stage.static_labels {
-      values = {
-        job = "ssh",
-      }
-    }
-  }
-
-  // Set job="sudo" for sudo lines to match systemd schema
-  stage.match {
-    selector = "{program=\"sudo\"}"
-
-    stage.static_labels {
-      values = {
-        job = "sudo",
-      }
-    }
-  }
-
-  // Extract syslog priority and map to level label
-  stage.regex {
-    expression = "^<(?P<pri>\\d+)>"
-  }
-
-  stage.template {
-    source = "level"
-    template = "{{ "{{" }} if .pri {{ "}}" }}{{ "{{" }} if le .pri 3 {{ "}}" }}error{{ "{{" }} else if le .pri 5 {{ "}}" }}warn{{ "{{" }} else {{ "}}" }}info{{ "{{" }} end {{ "}}" }}{{ "{{" }} else {{ "}}" }}info{{ "{{" }} end {{ "}}" }}"
-  }
-
-  stage.labels {
-    values = {
-      level = "",
-    }
-  }
-}
-
-{% endif %}
 {% else %}
 // Log collection disabled (alloy_log_collection_enabled = false)
 {% endif %}

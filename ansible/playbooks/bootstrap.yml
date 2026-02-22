@@ -8,13 +8,6 @@
       ignore_errors: true
       register: facts_result
 
-    - name: Detect OS when facts failed (Alpine)
-      ansible.builtin.raw: command -v apk
-      register: apk_check
-      failed_when: false
-      changed_when: false
-      when: facts_result.failed
-
     - name: Detect OS when facts failed (Debian)
       ansible.builtin.raw: command -v apt-get
       register: apt_check
@@ -22,18 +15,12 @@
       changed_when: false
       when: facts_result.failed
 
-    - name: Install Python on Alpine
-      ansible.builtin.raw: apk add --no-cache --no-progress python3 py3-pip
-      register: apk_install
-      changed_when: "'Installing' in apk_install.stdout or 'Upgrading' in apk_install.stdout"
-      when: >
-        (facts_result.failed and apk_check.rc == 0) or
-        (not facts_result.failed and ansible_os_family == "Alpine")
-
     - name: Install Python on Debian/Ubuntu
-      ansible.builtin.raw: apt-get update && apt-get install -y python3 python3-pip
+      ansible.builtin.raw: >
+        apt-get update &&
+        apt-get install -y python3 python3-pip python3-apt sudo ca-certificates curl wget gnupg lsb-release
       register: apt_install
-      changed_when: "'Unpacking' in apt_install.stdout"
+      changed_when: "'Unpacking' in apt_install.stdout or 'Setting up' in apt_install.stdout"
       when: >
         (facts_result.failed and apt_check.rc == 0) or
         (not facts_result.failed and ansible_os_family == "Debian")
@@ -44,28 +31,16 @@
     - name: Ping hosts
       ansible.builtin.ping:
 
-    - name: Install essentials on Alpine
-      community.general.apk:
-        name:
-          - curl
-          - wget
-        state: present
-      when: ansible_os_family == "Alpine"
-
     - name: Install essentials on Debian/Ubuntu
       ansible.builtin.apt:
         name:
           - curl
           - wget
+          - ca-certificates
+          - gnupg
         state: present
         update_cache: true
       when: ansible_os_family == "Debian"
-
-    - name: Update system packages (Alpine)
-      community.general.apk:
-        update_cache: true
-        upgrade: true
-      when: ansible_os_family == "Alpine"
 
     - name: Update system packages (Debian/Ubuntu)
       ansible.builtin.apt:

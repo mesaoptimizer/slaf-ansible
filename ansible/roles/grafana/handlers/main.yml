@@ -1,11 +1,11 @@
 ---
 - name: Restart grafana
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: grafana
     state: restarted
     enabled: true
 
 - name: Reload grafana
-  ansible.builtin.service:
+  ansible.builtin.systemd:
     name: grafana
     state: reloaded

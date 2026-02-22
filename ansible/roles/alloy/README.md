@@ -1,6 +1,6 @@
 # Alloy Role
 
-Deploys [Grafana Alloy](https://grafana.com/docs/alloy/) for metrics collection (to Mimir) and security-focused log collection (to Loki) across both **Debian/Ubuntu** (systemd) and **Alpine** (OpenRC) hosts.
+Deploys [Grafana Alloy](https://grafana.com/docs/alloy/) for metrics collection (to Mimir) and security-focused log collection (to Loki) across **Debian/Ubuntu** (systemd) hosts.
 
 ## What Logs Are Collected
 
@@ -8,13 +8,13 @@ Log collection is enabled by default (`alloy_log_collection_enabled: true`) and 
 
 ### Collected by Default
 
-| Category                                        | Systemd (Debian)                                     | OpenRC (Alpine)                                       | Job Label |
-| ----------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------- | --------- |
-| SSH authentication (accept, reject, key events) | `ssh.service` journal                                | `sshd` in `/var/log/messages`                         | `ssh`     |
-| sudo / su commands                              | `_COMM=sudo` journal match                           | `sudo`, `su` in `/var/log/messages`                   | `sudo`    |
-| Kernel errors (panics, oops, hardware failures) | Journal `PRIORITY=0-3`                               | `kernel` in `/var/log/messages`                       | `system`  |
-| Service crashes and fatal errors                | Journal `PRIORITY=0-3` (includes exit-code-non-zero) | `rc-service`, `openrc`, `init` in `/var/log/messages` | `system`  |
-| Cron execution                                  | `cron.service` journal (via `alloy_journal_units`)   | `CRON` in `/var/log/messages`                         | `system`  |
+| Category                                        | Systemd (Debian/Ubuntu)                              | Job Label |
+| ----------------------------------------------- | ---------------------------------------------------- | --------- |
+| SSH authentication (accept, reject, key events) | `ssh.service` journal                                | `ssh`     |
+| sudo / su commands                              | `_COMM=sudo` journal match                           | `sudo`    |
+| Kernel errors (panics, oops, hardware failures) | Journal `PRIORITY=0-3`                               | `system`  |
+| Service crashes and fatal errors                | Journal `PRIORITY=0-3` (includes exit-code-non-zero) | `system`  |
+| Cron execution                                  | `cron.service` journal (via `alloy_journal_units`)   | `system`  |
 
 ### NOT Collected
 
@@ -29,14 +29,13 @@ Log collection is enabled by default (`alloy_log_collection_enabled: true`) and 
 
 All log streams use a consistent, low-cardinality label set:
 
-| Label      | Source          | Values                                   | Description                                |
-| ---------- | --------------- | ---------------------------------------- | ------------------------------------------ |
-| `instance` | External label  | Hostname (`{{ inventory_hostname }}`)    | Which host emitted the log                 |
-| `env`      | External label  | `production` (default)                   | Environment tag                            |
-| `job`      | Set by pipeline | `ssh`, `sudo`, `system`, `proxmox`, etc. | The service category (bounded)             |
-| `unit`     | Systemd only    | e.g. `ssh.service`, `cron.service`       | Systemd unit name                          |
-| `program`  | Alpine only     | e.g. `sshd`, `sudo`, `kernel`            | Syslog program name (bounded by allowlist) |
-| `level`    | Both            | `error`, `warn`, `info`                  | Log severity                               |
+| Label      | Source          | Values                                   | Description                    |
+| ---------- | --------------- | ---------------------------------------- | ------------------------------ |
+| `instance` | External label  | Hostname (`{{ inventory_hostname }}`)    | Which host emitted the log     |
+| `env`      | External label  | `production` (default)                   | Environment tag                |
+| `job`      | Set by pipeline | `ssh`, `sudo`, `system`, `proxmox`, etc. | The service category (bounded) |
+| `unit`     | Systemd only    | e.g. `ssh.service`, `cron.service`       | Systemd unit name              |
+| `level`    | Both            | `error`, `warn`, `info`                  | Log severity                   |
 
 ### Cardinality Guidelines
 
@@ -59,17 +58,6 @@ alloy_journal_units:
 
 These are collected with `job="system"` and the `unit` label set to the unit name.
 
-### Add a syslog program (Alpine/OpenRC)
-
-Extend `alloy_syslog_match_regex` in `group_vars` or `host_vars`:
-
-```yaml
-# Default: "(sshd|sudo|su|CRON|kernel|rc-service|openrc|init)"
-alloy_syslog_match_regex: "(sshd|sudo|su|CRON|kernel|rc-service|openrc|init|nginx|postgres)"
-```
-
-Only lines from matching programs are ingested. The `program` label is automatically set.
-
 ### Add a fully custom pipeline
 
 Use `alloy_extra_config_blocks` for pipelines that don't fit the base pattern. The shared `loki.write "default"` endpoint is available for forwarding:
@@ -90,29 +78,27 @@ alloy_extra_config_blocks:
 
 ## Role Variables
 
-| Variable                       | Default                                                      | Description                                             |
-| ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------- |
-| `alloy_mimir_endpoint`         | `http://mimir.home.arpa:9009`                                | Mimir remote write URL                                  |
-| `alloy_loki_endpoint`          | `http://loki.home.arpa:3100`                                 | Loki push API URL                                       |
-| `alloy_log_collection_enabled` | `true`                                                       | Enable/disable all log collection                       |
-| `alloy_journal_units`          | `["cron.service"]`                                           | Extra systemd units to collect (SSH is always included) |
-| `alloy_syslog_match_regex`     | `"(sshd\|sudo\|su\|CRON\|kernel\|rc-service\|openrc\|init)"` | Alpine syslog program allowlist                         |
-| `alloy_scrape_interval`        | `60s`                                                        | Prometheus metrics scrape interval                      |
-| `alloy_external_labels`        | `{env: "production"}`                                        | Labels applied to all metrics and logs                  |
-| `alloy_extra_config_blocks`    | `[]`                                                         | Additional Alloy River config blocks                    |
-| `alloy_http_port`              | `12345`                                                      | Alloy HTTP listen port                                  |
-| `alloy_user` / `alloy_group`   | `alloy` / `alloy`                                            | Service user and group                                  |
+| Variable                       | Default                       | Description                                             |
+| ------------------------------ | ----------------------------- | ------------------------------------------------------- |
+| `alloy_mimir_endpoint`         | `http://mimir.home.arpa:9009` | Mimir remote write URL                                  |
+| `alloy_loki_endpoint`          | `http://loki.home.arpa:3100`  | Loki push API URL                                       |
+| `alloy_log_collection_enabled` | `true`                        | Enable/disable all log collection                       |
+| `alloy_journal_units`          | `["cron.service"]`            | Extra systemd units to collect (SSH is always included) |
+| `alloy_scrape_interval`        | `60s`                         | Prometheus metrics scrape interval                      |
+| `alloy_external_labels`        | `{env: "production"}`         | Labels applied to all metrics and logs                  |
+| `alloy_extra_config_blocks`    | `[]`                          | Additional Alloy River config blocks                    |
+| `alloy_http_port`              | `12345`                       | Alloy HTTP listen port                                  |
+| `alloy_user` / `alloy_group`   | `alloy` / `alloy`             | Service user and group                                  |
 
 ## OS Support
 
-| OS Family       | Init System | Log Source                                | Journal Access                                                            |
-| --------------- | ----------- | ----------------------------------------- | ------------------------------------------------------------------------- |
-| Debian / Ubuntu | systemd     | `loki.source.journal`                     | User added to `systemd-journal` group; `SupplementaryGroups` in unit file |
-| Alpine          | OpenRC      | `loki.source.file` on `/var/log/messages` | User added to `adm` group for `/var/log/*` access                         |
+| OS Family       | Init System | Log Source            | Journal Access                                                            |
+| --------------- | ----------- | --------------------- | ------------------------------------------------------------------------- |
+| Debian / Ubuntu | systemd     | `loki.source.journal` | User added to `systemd-journal` group; `SupplementaryGroups` in unit file |
 
 ## Writing Alert Rules
 
-With the unified label schema, alert rules work across both OS families:
+With the unified label schema, alert rules work across Debian/Ubuntu hosts:
 
 ```yaml
 # Works for all hosts regardless of init system
@@ -120,7 +106,4 @@ With the unified label schema, alert rules work across both OS families:
   expr: count_over_time({job="ssh"} |~ "Accepted .+ for root" [5m]) > 0
 ```
 
-For OS-specific queries:
-
-- Systemd hosts: `{job="ssh", unit="ssh.service"}`
-- Alpine hosts: `{job="ssh", program="sshd"}`
+For systemd-specific queries: `{job="ssh", unit="ssh.service"}`
